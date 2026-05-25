@@ -50,7 +50,11 @@ def _merge_conflict(conn: duckdb.DuckDBPyConnection, conflict_path: str, tenant_
     """)
 
     # Load conflict file into a temp view
-    conn.execute(f"CREATE OR REPLACE VIEW conflict_data AS SELECT * FROM read_parquet('{sql_conflict}')")
+    # nosec B608 — DuckDB read_parquet() requires the file path as a string literal;
+    # sql_conflict comes from glob.glob on the shared_storage directory (server-controlled FS).
+    conn.execute(  # nosec B608
+        f"CREATE OR REPLACE VIEW conflict_data AS SELECT * FROM read_parquet('{sql_conflict}')"
+    )
 
     # Count before insert to compute rows added (DuckDB has no changes())
     before = conn.execute("SELECT COUNT(*) FROM tenant_metrics").fetchone()[0]
@@ -74,10 +78,12 @@ def _merge_conflict(conn: duckdb.DuckDBPyConnection, conflict_path: str, tenant_
     if os.path.exists(canonical_path):
         os.remove(canonical_path)
 
-    conn.execute(f"""
-        COPY (SELECT * FROM tenant_metrics WHERE tenant_id = '{tenant_id}')
-        TO '{sql_canonical}' (FORMAT PARQUET)
-    """)
+    # nosec B608 — DuckDB COPY TO requires the file path as a string literal;
+    # sql_canonical is a server-generated path; tenant_id is extracted from a glob-matched filename.
+    conn.execute(  # nosec B608
+        f"COPY (SELECT * FROM tenant_metrics WHERE tenant_id = '{tenant_id}')"
+        f" TO '{sql_canonical}' (FORMAT PARQUET)"
+    )
 
     return rows_added
 

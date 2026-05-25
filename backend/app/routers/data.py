@@ -55,10 +55,13 @@ def _write_to_duckdb(conn: duckdb.DuckDBPyConnection, tenant_id: str, data: Dict
 def _export_parquet(conn: duckdb.DuckDBPyConnection, tenant_id: str) -> str:
     parquet_path = os.path.join(PARQUET_DIR, f"{tenant_id}_storage.parquet")
     sql_path = parquet_path.replace("\\", "/")
-    conn.execute(f"""
-        COPY (SELECT * FROM tenant_metrics WHERE tenant_id = '{tenant_id}')
-        TO '{sql_path}' (FORMAT PARQUET)
-    """)
+    # nosec B608 — DuckDB COPY TO requires the file path as a string literal;
+    # parameterized queries are not supported for COPY destinations.
+    # sql_path is server-generated (UUID-based tenant path); tenant_id is Pydantic-validated.
+    conn.execute(  # nosec B608
+        f"COPY (SELECT * FROM tenant_metrics WHERE tenant_id = '{tenant_id}')"
+        f" TO '{sql_path}' (FORMAT PARQUET)"
+    )
     return parquet_path
 
 
