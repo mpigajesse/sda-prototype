@@ -32,6 +32,8 @@ services:
       - DB_SQLITE_PATH=/app/data/db/metadata.db
       - DB_DUCKDB_PATH=/app/data/db/analytics.duckdb
       - SHARED_STORAGE_PATH=/app/data/shared_storage
+      # Active SQLCipher — désactivé en CI (pysqlcipher3 absent hors Docker)
+      - SQLITE_ENCRYPTION_ENABLED=true
       # Clés de chiffrement — injecter via .env ou Docker secrets en production
       # Générer : python -c "import secrets; print(secrets.token_hex(32))"
       - DB_ENCRYPTION_KEY=${DB_ENCRYPTION_KEY:-changeme-replace-in-production}

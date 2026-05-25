@@ -15,11 +15,16 @@ DB_ENCRYPTION_KEY = os.getenv("DB_ENCRYPTION_KEY", "")
 # Generate one with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 PARQUET_FERNET_KEY = os.getenv("PARQUET_FERNET_KEY", "")
 
+# SQLCipher encryption is opt-in — disabled in CI tests to avoid pysqlcipher3/SQLAlchemy 2.0
+# incompatibility (pysqlcipher3 1.2.x doesn't accept deterministic=True in create_function).
+# Set SQLITE_ENCRYPTION_ENABLED=true only in Docker runtime where pysqlcipher3 is installed.
+_USE_SQLCIPHER = os.getenv("SQLITE_ENCRYPTION_ENABLED", "false").lower() == "true"
+
 os.makedirs(os.path.dirname(SQLITE_PATH), exist_ok=True)
 os.makedirs(SHARED_STORAGE_PATH, exist_ok=True)
 
 # ---------------------------------------------------------------------------
-# SQLite — encrypted via SQLCipher (AES-256-CBC) when DB_ENCRYPTION_KEY is set
+# SQLite — encrypted via SQLCipher (AES-256-CBC) when SQLITE_ENCRYPTION_ENABLED=true
 # ---------------------------------------------------------------------------
 try:
     import pysqlcipher3.dbapi2 as _sqlcipher_dbapi
@@ -29,7 +34,7 @@ except ImportError:
 
 
 def _make_sqlite_connection():
-    if _SQLCIPHER_AVAILABLE and DB_ENCRYPTION_KEY:
+    if _USE_SQLCIPHER and _SQLCIPHER_AVAILABLE and DB_ENCRYPTION_KEY:
         conn = _sqlcipher_dbapi.connect(SQLITE_PATH)
         conn.execute(f"PRAGMA key='{DB_ENCRYPTION_KEY}'")
         conn.execute("PRAGMA cipher_page_size=4096")

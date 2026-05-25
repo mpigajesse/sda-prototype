@@ -23,11 +23,6 @@ jobs:
           python-version: "3.11"
           cache: pip
 
-      - name: Installer les dépendances système (SQLCipher)
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y libsqlcipher-dev gcc python3-dev
-
       - name: Installer les dépendances Python
         run: |
           pip install -r backend/requirements.txt
@@ -40,7 +35,10 @@ jobs:
                  --cov-fail-under=80 \
                  -v
         env:
-          DB_ENCRYPTION_KEY: "test-key-ci-only-not-production"
+          # SQLCipher désactivé en CI — pysqlcipher3 n'est pas installé ici
+          # (installé uniquement dans le Dockerfile via le stage builder)
+          SQLITE_ENCRYPTION_ENABLED: "false"
+          DB_ENCRYPTION_KEY: ""
           PARQUET_FERNET_KEY: ""
 
       - name: Publier le rapport de couverture
@@ -66,7 +64,7 @@ jobs:
           python-version: "3.11"
 
       - name: Installer Bandit
-        run: pip install bandit==1.7.5
+        run: pip install "bandit[toml]>=1.8.0"
 
       - name: Scan Bandit
         run: |

@@ -1,16 +1,32 @@
-FROM python:3.11-slim
-
-WORKDIR /app
+# Stage 1 — builder: compile pysqlcipher3 against libsqlcipher-dev
+FROM python:3.11-slim AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
     gcc \
     python3-dev \
     libsqlcipher-dev \
     && rm -rf /var/lib/apt/lists/*
 
+WORKDIR /build
+
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# pysqlcipher3 needs libsqlcipher-dev to compile — kept out of requirements.txt
+# so CI tests use plain sqlite3 (no pysqlcipher3/SQLAlchemy 2.0 conflict)
+RUN pip install --no-cache-dir --prefix=/install pysqlcipher3==1.2.0
+
+# Stage 2 — runtime: only the runtime library (~800 KB), no build toolchain
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    libsqlcipher0 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY --from=builder /install /usr/local
 
 RUN mkdir -p /app/data/db /app/data/shared_storage && \
     chmod -R 700 /app/data
