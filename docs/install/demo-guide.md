@@ -1,340 +1,339 @@
-# Guide de Démonstration Complète — 2 Nœuds SDA
+# Guide de Démonstration Complète — 3 Nœuds SDA
 
-**Contexte :** Node 1 = Windows 10 · Node 2 = Kali Linux  
-**Durée estimée :** 30 minutes (déploiement) + 20 minutes (tests)
+**Contexte :**
+- Node 1 = **PC physique Windows 11** — prototype déjà opérationnel ✅
+- Node 2 = VM Windows 10
+- Node 3 = VM Kali Linux
 
----
-
-## 0. Architecture de la démo
-
-```
-┌──────────────────────────┐          ┌──────────────────────────┐
-│   NODE 1 — Windows 10    │          │    NODE 2 — Kali Linux   │
-│                          │          │                          │
-│  docker compose up       │          │  docker compose up       │
-│  ┌──────────────────┐    │          │    ┌──────────────────┐  │
-│  │  FastAPI :8000   │    │          │    │  FastAPI :8000   │  │
-│  │  DuckDB/SQLite   │    │          │    │  DuckDB/SQLite   │  │
-│  │  Syncthing :8384 │    │          │    │  Syncthing :8384 │  │
-│  └──────────────────┘    │          │    └──────────────────┘  │
-│         │                │          │           │              │
-│   Nginx :443 (mTLS)      │          │     Nginx :443 (mTLS)    │
-└──────────┼───────────────┘          └───────────┼──────────────┘
-           │                                       │
-           └──── Syncthing P2P — port 22000 ────────┘
-                  (TLS 1.3 · BEP Protocol)
-                  shared_storage/ synchronized
-```
-
-**IPs de référence pour ce guide** (adapter à ton réseau) :
-
-| Nœud | OS | IP LAN |
-|------|----|--------|
-| Node 1 | Windows 10 | `192.168.1.10` |
-| Node 2 | Kali Linux | `192.168.1.20` |
+**Durée estimée :** 15 min (Node 1 déjà prêt) + 30 min (Nodes 2 & 3) + 20 min (tests)
 
 ---
 
-## 1. Prérequis sur chaque nœud
+## 0. Architecture de la démo 3 nœuds
 
-### Node 1 — Windows 10
+```
+┌──────────────────────────┐
+│  NODE 1 — Windows 11     │  ← PC physique, prototype actif
+│  ✅ Déjà opérationnel    │
+│  ┌──────────────────┐    │
+│  │  FastAPI :8000   │    │
+│  │  DuckDB/SQLite   │    │
+│  │  Syncthing :8384 │    │
+│  └──────────────────┘    │
+│   Nginx :443 (mTLS)      │
+└──────────┬───────────────┘
+           │   Syncthing P2P
+           │   port 22000
+           │   TLS 1.3 · BEP
+    ┌──────┴──────┐
+    │             │
+    ▼             ▼
+┌──────────────────────────┐     ┌──────────────────────────┐
+│  NODE 2 — Windows 10 VM  │     │  NODE 3 — Kali Linux VM  │
+│                          │─────│                          │
+│  docker compose up       │     │  docker compose up       │
+│  ┌──────────────────┐    │     │  ┌──────────────────┐    │
+│  │  FastAPI :8000   │    │     │  │  FastAPI :8000   │    │
+│  │  DuckDB/SQLite   │    │     │  │  DuckDB/SQLite   │    │
+│  │  Syncthing :8384 │    │     │  │  Syncthing :8384 │    │
+│  └──────────────────┘    │     │  └──────────────────┘    │
+│   Nginx :443 (mTLS)      │     │   Nginx :443 (mTLS)      │
+└──────────────────────────┘     └──────────────────────────┘
+
+         shared_storage/ synchronisé entre les 3 nœuds (P2P mesh)
+```
+
+**IPs de référence** (adapter à ton réseau LAN) :
+
+| Nœud | OS | Type | IP LAN | Statut |
+|------|----|------|--------|--------|
+| Node 1 | Windows 11 | PC physique | `192.168.1.10` | ✅ Déjà prêt |
+| Node 2 | Windows 10 | VM | `192.168.1.20` | À déployer |
+| Node 3 | Kali Linux | VM | `192.168.1.30` | À déployer |
+
+> Trouver ton IP sur Windows 11 : `ipconfig` → "Adresse IPv4"
+> Trouver ton IP sur Kali : `ip a show eth0`
+
+---
+
+## 1. Node 1 — Windows 11 (PC physique, déjà opérationnel)
+
+Le prototype tourne déjà. Vérification rapide :
 
 ```powershell
-# Vérifier Docker Desktop
-docker --version        # >= 24.x
-docker compose version  # >= 2.x
-
-# Vérifier Git
-git --version
-
-# Vérifier que le pare-feu autorise les ports SDA
-# Panneau de configuration > Pare-feu Windows > Autoriser une application
-# Ports à ouvrir en entrée : 443 (HTTPS), 22000 (Syncthing P2P), 8384 (Syncthing GUI)
-```
-
-### Node 2 — Kali Linux
-
-```bash
-# Docker Engine
-sudo apt update && sudo apt install -y docker.io docker-compose-plugin
-sudo systemctl enable --now docker
-sudo usermod -aG docker $USER   # puis se reconnecter
-
-# Vérifier
-docker --version
-docker compose version
-
-# Ouvrir les ports dans UFW (si actif)
-sudo ufw allow 443/tcp
-sudo ufw allow 22000/tcp
-sudo ufw allow 22000/udp
-sudo ufw allow 8384/tcp
-```
-
----
-
-## 2. Cloner le dépôt sur chaque nœud
-
-### Node 1 (PowerShell)
-```powershell
-git clone https://github.com/mpigajesse/sda-prototype.git
-cd sda-prototype
-```
-
-### Node 2 (bash)
-```bash
-git clone https://github.com/mpigajesse/sda-prototype.git
-cd sda-prototype
-```
-
----
-
-## 3. Générer les certificats TLS (une seule fois par nœud)
-
-Chaque nœud a sa propre CA et ses propres certificats — c'est le modèle Zero-Trust du SDA.
-
-### Node 1 (PowerShell via Git Bash ou WSL)
-```bash
-bash scripts/generate-certs.sh
-# Vérifie que ces fichiers existent :
-ls config/nginx/certs/
-# ca.crt  ca.key  server.crt  server.key  client.crt  client.key
-```
-
-### Node 2 (bash)
-```bash
-bash scripts/generate-certs.sh
-ls config/nginx/certs/
-```
-
----
-
-## 4. Configurer les variables d'environnement
-
-### Sur chaque nœud, créer `.env` à partir du template :
-
-```bash
-cp .env.example .env
-```
-
-Éditer `.env` et renseigner :
-
-```ini
-# Clé SQLite (SQLCipher AES-256) — générer avec :
-# python -c "import secrets; print(secrets.token_hex(32))"
-DB_ENCRYPTION_KEY=<votre-cle-hex-64-chars>
-
-# Clé Parquet (Fernet AES-128-CBC+HMAC) — générer avec :
-# python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-PARQUET_FERNET_KEY=<votre-cle-fernet-44-chars>
-```
-
-> **Important** : utiliser des clés différentes sur chaque nœud est possible,
-> mais les fichiers Parquet chiffrés ne seront pas déchiffrables entre nœuds.
-> Pour la démo inter-nœuds, utiliser les **mêmes clés** sur les deux VMs.
-
----
-
-## 5. Lancer le stack Docker sur chaque nœud
-
-### Node 1 (PowerShell)
-```powershell
-docker compose --env-file .env up --build -d
-# Attendre ~30 secondes le démarrage complet
+# Dans D:\PFE\sda-prototype
 docker compose ps
 ```
 
-### Node 2 (bash)
+**Résultat attendu :**
+```
+NAME            STATUS
+sda-nginx       Up (healthy)
+sda-backend     Up (healthy)
+sda-frontend    Up (healthy)
+sda-syncthing   Up
+```
+
+Si le stack n'est pas démarré :
+```powershell
+docker compose --env-file .env up --build -d
+```
+
+Test rapide health check :
+```powershell
+curl -k https://localhost/health
+# Attendu : {"status":"operational",...}
+```
+
+---
+
+## 2. Ouvrir les ports pare-feu sur Windows 11
+
+Pour que les VMs puissent se connecter au Node 1 :
+
+```powershell
+# Exécuter en tant qu'Administrateur
+New-NetFirewallRule -DisplayName "SDA-HTTPS"      -Direction Inbound -Protocol TCP -LocalPort 443   -Action Allow
+New-NetFirewallRule -DisplayName "SDA-Syncthing"  -Direction Inbound -Protocol TCP -LocalPort 22000 -Action Allow
+New-NetFirewallRule -DisplayName "SDA-SyncUDP"    -Direction Inbound -Protocol UDP -LocalPort 22000 -Action Allow
+New-NetFirewallRule -DisplayName "SDA-SyncGUI"    -Direction Inbound -Protocol TCP -LocalPort 8384  -Action Allow
+```
+
+---
+
+## 3. Node 2 — VM Windows 10
+
+### 3.1 Prérequis
+
+```powershell
+# Installer Docker Desktop si absent
+# https://www.docker.com/products/docker-desktop/
+docker --version
+docker compose version
+
+# Vérifier Git
+git --version
+```
+
+Ouvrir les mêmes ports pare-feu (même commande qu'au §2).
+
+### 3.2 Cloner et configurer
+
+```powershell
+git clone https://github.com/mpigajesse/sda-prototype.git
+cd sda-prototype
+
+# Générer les certificats TLS pour ce nœud
+bash scripts/generate-certs.sh   # via Git Bash ou WSL
+
+# Créer .env avec les mêmes clés que Node 1 (pour Parquet inter-nœuds)
+copy .env.example .env
+notepad .env
+```
+
+> **Important** : copier exactement les mêmes valeurs `DB_ENCRYPTION_KEY` et
+> `PARQUET_FERNET_KEY` que sur Node 1 — sinon les Parquets chiffrés
+> ne seront pas lisibles entre nœuds.
+
+### 3.3 Démarrer le stack
+
+```powershell
+docker compose --env-file .env up --build -d
+Start-Sleep -Seconds 30
+docker compose ps
+```
+
+### 3.4 Vérification
+
+```powershell
+curl -k https://localhost/health
+```
+
+---
+
+## 4. Node 3 — VM Kali Linux
+
+### 4.1 Prérequis
+
+```bash
+sudo apt update && sudo apt install -y docker.io docker-compose-plugin git curl openssl
+sudo systemctl enable --now docker
+sudo usermod -aG docker $USER
+# Se déconnecter/reconnecter pour appliquer le groupe docker
+
+# Ouvrir les ports (si UFW actif)
+sudo ufw allow 443/tcp 22000/tcp 22000/udp 8384/tcp
+```
+
+### 4.2 Cloner et configurer
+
+```bash
+git clone https://github.com/mpigajesse/sda-prototype.git
+cd sda-prototype
+
+# Générer les certificats
+bash scripts/generate-certs.sh
+
+# Copier .env depuis Node 1 (mêmes clés !)
+# Soit manuellement, soit via scp depuis Node 1 :
+# scp user@192.168.1.10:/path/sda-prototype/.env .env
+cp .env.example .env
+nano .env   # coller les mêmes clés que Node 1
+```
+
+### 4.3 Démarrer le stack
+
 ```bash
 docker compose --env-file .env up --build -d
 sleep 30
 docker compose ps
 ```
 
-**Résultat attendu sur les deux nœuds :**
+### 4.4 Vérification
 
-```
-NAME            IMAGE           STATUS          PORTS
-sda-nginx       nginx:1.25...   Up (healthy)    0.0.0.0:443->443/tcp
-sda-backend     sda-backend     Up (healthy)    (internal)
-sda-frontend    sda-frontend    Up (healthy)    (internal)
-sda-syncthing   syncthing/...   Up              0.0.0.0:22000->22000/tcp
+```bash
+curl -k https://localhost/health
 ```
 
 ---
 
-## 6. Vérifier le health check (test minimal)
+## 5. Coupler les 3 nœuds Syncthing (maillage P2P)
 
-### Node 1
+### 5.1 Accéder aux interfaces Syncthing
+
+| Nœud | URL Syncthing GUI |
+|------|-------------------|
+| Node 1 — Win11 | `http://192.168.1.10:8384` |
+| Node 2 — Win10 | `http://192.168.1.20:8384` |
+| Node 3 — Kali  | `http://192.168.1.30:8384` |
+
+### 5.2 Récupérer les Device IDs (sur chaque nœud)
+
+Dans chaque interface Syncthing :
+1. **Actions** (bouton en haut à droite) → **Afficher l'ID de l'appareil**
+2. Copier le Device ID (format : `XXXXXXX-XXXXXXX-...`)
+
+Noter les 3 IDs :
+```
+Node 1 (Win11) : _______________________________________
+Node 2 (Win10) : _______________________________________
+Node 3 (Kali)  : _______________________________________
+```
+
+### 5.3 Ajouter les pairs (sur chaque nœud)
+
+Sur **Node 1** — ajouter Node 2 ET Node 3 :
+1. **Ajouter un appareil distant**
+2. Coller Device ID de Node 2 → Nom : `SDA-Win10-VM` → Adresse : `tcp://192.168.1.20:22000` → Cocher `SDA_Shared` → Enregistrer
+3. Répéter pour Node 3 → `tcp://192.168.1.30:22000`
+
+Sur **Node 2** — accepter les connexions entrantes (notification Syncthing) et ajouter Node 3.
+
+Sur **Node 3** — accepter les connexions entrantes.
+
+### 5.4 Vérifier le maillage
+
+Dans chaque interface Syncthing :
+- `SDA_Shared` : statut **"À jour"** (fond vert)
+- 2 appareils **"Connecté"** visibles
+
+---
+
+## 6. Tests fonctionnels complets
+
+### Test 1 — Ingest depuis Node 1 (Win11)
+
 ```powershell
-# Avec certificat client (mTLS)
-curl --cacert config/nginx/certs/ca.crt `
-     --cert   config/nginx/certs/client.crt `
-     --key    config/nginx/certs/client.key `
-     https://localhost/health
+# PowerShell sur Node 1
+$cert = "config/nginx/certs/client.crt"
+$key  = "config/nginx/certs/client.key"
+$ca   = "config/nginx/certs/ca.crt"
+
+Invoke-RestMethod `
+  -Uri "https://localhost/api/v1/data/ingest" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"tenant_id":"tenant_albaraa","data":{"metric":"cpu","value":42,"node":"win11"}}' `
+  -SkipCertificateCheck
 ```
 
-### Node 2
+Ou via curl (Git Bash) :
 ```bash
 curl --cacert config/nginx/certs/ca.crt \
      --cert   config/nginx/certs/client.crt \
      --key    config/nginx/certs/client.key \
-     https://localhost/health
+     -X POST https://localhost/api/v1/data/ingest \
+     -H "Content-Type: application/json" \
+     -d '{"tenant_id":"tenant_albaraa","data":{"metric":"cpu","value":42,"node":"win11"}}'
 ```
 
 **Réponse attendue :**
 ```json
-{
-  "status": "operational",
-  "architecture": "local-first / distributed",
-  "central_dependency": "none",
-  "offline_ready": true
-}
+{"status":"success","tenant_id":"tenant_albaraa","record_hash":"...","audit_id":1}
 ```
 
----
+### Test 2 — Vérifier la réplication sur Node 2 et Node 3
 
-## 7. Coupler les deux nœuds Syncthing (P2P)
+Après ~5-15 secondes (délai Syncthing) :
 
-Syncthing gère la réplication P2P du dossier `shared_storage/`.
-
-### 7.1 Accéder à l'interface Syncthing sur chaque nœud
-
-- **Node 1** : ouvrir `http://192.168.1.10:8384` dans le navigateur
-- **Node 2** : ouvrir `http://192.168.1.20:8384` dans le navigateur
-
-### 7.2 Récupérer les Device IDs
-
-Sur chaque interface Syncthing :
-1. Cliquer sur **Actions** (en haut à droite)
-2. Cliquer **Afficher l'ID de l'appareil**
-3. Copier le Device ID (format : `XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX`)
-
-### 7.3 Ajouter Node 2 sur Node 1
-
-Sur l'interface Node 1 :
-1. **Ajouter un appareil distant** → coller le Device ID de Node 2
-2. Nom : `SDA-KaliLinux`
-3. Adresse : `tcp://192.168.1.20:22000`
-4. Cocher le dossier **SDA_Shared**
-5. **Enregistrer**
-
-### 7.4 Accepter la connexion sur Node 2
-
-Sur l'interface Node 2 :
-1. Une notification apparaît : "Nouvel appareil détecté"
-2. **Ajouter l'appareil** → cocher le dossier **SDA_Shared**
-3. **Enregistrer**
-
-### 7.5 Vérifier la synchronisation
-
-Dans les deux interfaces Syncthing :
-- Status du dossier SDA_Shared : **"À jour"** (icône verte)
-- Connection P2P : **"Connecté"**
-
----
-
-## 8. Tests fonctionnels complets
-
-### Test 1 — Ingestion de données sur Node 1
+```powershell
+# Sur Node 2 (PowerShell)
+dir data\shared_storage\
+# tenant_albaraa_storage.parquet doit apparaître ✅
+```
 
 ```bash
-# Depuis Node 1 (ou depuis n'importe quelle machine avec le certificat client)
+# Sur Node 3 (bash)
+ls -lh data/shared_storage/
+# tenant_albaraa_storage.parquet ✅
+```
+
+### Test 3 — Ingest depuis Node 3 (Kali)
+
+```bash
 curl --cacert config/nginx/certs/ca.crt \
      --cert   config/nginx/certs/client.crt \
      --key    config/nginx/certs/client.key \
-     -X POST https://192.168.1.10/api/v1/data/ingest \
+     -X POST https://localhost/api/v1/data/ingest \
      -H "Content-Type: application/json" \
-     -d '{
-       "tenant_id": "tenant_demo_albaraa",
-       "data": {
-         "metric": "cpu_usage",
-         "value": 67.3,
-         "node_id": "node-win10",
-         "timestamp": "2026-05-25T18:00:00Z"
-       }
-     }'
+     -d '{"tenant_id":"tenant_albaraa","data":{"metric":"memory","value":8192,"node":"kali"}}'
 ```
 
-**Réponse attendue :**
-```json
-{
-  "status": "success",
-  "tenant_id": "tenant_demo_albaraa",
-  "record_hash": "a3f8...",
-  "audit_id": 1,
-  "parquet_path": "./data/shared_storage/tenant_demo_albaraa_storage.parquet"
-}
-```
+Vérifier que le Parquet mis à jour arrive sur Node 1 et Node 2.
 
-### Test 2 — Vérifier la réplication sur Node 2
-
-Après ~5-10 secondes (temps de sync Syncthing) :
+### Test 4 — Scénario CRDT Conflit (hors-ligne → réconciliation)
 
 ```bash
-# Sur Node 2 — vérifier que le fichier Parquet est arrivé
-ls -la data/shared_storage/
-# tenant_demo_albaraa_storage.parquet doit être présent
-```
-
-### Test 3 — Ingérer depuis Node 2
-
-```bash
-# Depuis Node 2
-curl --cacert config/nginx/certs/ca.crt \
-     --cert   config/nginx/certs/client.crt \
-     --key    config/nginx/certs/client.key \
-     -X POST https://192.168.1.20/api/v1/data/ingest \
-     -H "Content-Type: application/json" \
-     -d '{
-       "tenant_id": "tenant_demo_albaraa",
-       "data": {
-         "metric": "memory_mb",
-         "value": 4096,
-         "node_id": "node-kali",
-         "timestamp": "2026-05-25T18:01:00Z"
-       }
-     }'
-```
-
-Vérifier sur Node 1 que le Parquet de Node 2 est synchronisé.
-
-### Test 4 — Conflit Syncthing (scénario CRDT)
-
-Simule deux nœuds qui modifient la même donnée hors-ligne puis se reconnectent.
-
-```bash
-# ÉTAPE 1 : Déconnecter les nœuds (simuler coupure réseau)
-# Sur Node 2 :
+# ÉTAPE 1 : Couper Syncthing sur Node 3 (simule coupure réseau)
+# Sur Node 3 :
 docker compose stop syncthing
 
-# ÉTAPE 2 : Ingérer sur les deux nœuds simultanément
+# ÉTAPE 2 : Ingérer en parallèle sur Node 1 ET Node 3
 # Sur Node 1 :
 curl --cacert config/nginx/certs/ca.crt \
      --cert config/nginx/certs/client.crt \
      --key config/nginx/certs/client.key \
-     -X POST https://192.168.1.10/api/v1/data/ingest \
+     -X POST https://localhost/api/v1/data/ingest \
      -H "Content-Type: application/json" \
-     -d '{"tenant_id":"tenant_conflict_test","data":{"value":100,"node":"win10"}}'
+     -d '{"tenant_id":"tenant_conflict","data":{"value":100,"node":"win11"}}'
 
-# Sur Node 2 :
+# Sur Node 3 (simultanément) :
 curl --cacert config/nginx/certs/ca.crt \
      --cert config/nginx/certs/client.crt \
      --key config/nginx/certs/client.key \
-     -X POST https://192.168.1.20/api/v1/data/ingest \
+     -X POST https://localhost/api/v1/data/ingest \
      -H "Content-Type: application/json" \
-     -d '{"tenant_id":"tenant_conflict_test","data":{"value":200,"node":"kali"}}'
+     -d '{"tenant_id":"tenant_conflict","data":{"value":200,"node":"kali"}}'
 
-# ÉTAPE 3 : Reconnecter Syncthing
-# Sur Node 2 :
+# ÉTAPE 3 : Reconnecter Syncthing sur Node 3
 docker compose start syncthing
-# Attendre ~15s — Syncthing créera un fichier .sync-conflict-*
+# Attendre ~15s — Syncthing créera un .sync-conflict-* sur Node 1
 
-# ÉTAPE 4 : Vérifier le conflit
+# ÉTAPE 4 : Vérifier le conflit sur Node 1
 ls data/shared_storage/
-# tenant_conflict_test_storage.sync-conflict-*.parquet doit apparaître
+# tenant_conflict_storage.sync-conflict-*.parquet ← conflit détecté ✅
 
-# ÉTAPE 5 : Réconcilier via l'API CRDT LWW
+# ÉTAPE 5 : Réconcilier (CRDT LWW)
 curl --cacert config/nginx/certs/ca.crt \
      --cert config/nginx/certs/client.crt \
      --key config/nginx/certs/client.key \
@@ -343,145 +342,140 @@ curl --cacert config/nginx/certs/ca.crt \
 
 **Réponse attendue :**
 ```json
-{
-  "status": "reconciled",
-  "conflicts_resolved": 1,
-  "merged_records": 1,
-  "timestamp": "2026-05-25T18:05:00Z"
-}
+{"status":"reconciled","conflicts_resolved":1,"merged_records":1,"timestamp":"..."}
 ```
 
-Vérifier que le fichier `.sync-conflict-*` a disparu :
 ```bash
+# Vérifier que le fichier conflit a disparu
 ls data/shared_storage/
-# Plus de fichier sync-conflict — conflit résolu ✅
+# Plus de .sync-conflict-* ✅
 ```
 
-### Test 5 — Audit Trail (traçabilité blockchain-style)
+### Test 5 — Audit Trail chaîné (traçabilité)
 
 ```bash
-# Ingérer plusieurs fois pour créer une chaîne
+# Ingérer 3 fois depuis Node 1
 for i in 1 2 3; do
+  echo "=== Ingest $i ==="
   curl -s --cacert config/nginx/certs/ca.crt \
        --cert config/nginx/certs/client.crt \
        --key config/nginx/certs/client.key \
-       -X POST https://192.168.1.10/api/v1/data/ingest \
+       -X POST https://localhost/api/v1/data/ingest \
        -H "Content-Type: application/json" \
        -d "{\"tenant_id\":\"tenant_audit\",\"data\":{\"seq\":$i}}" | python3 -m json.tool
 done
-
-# Chaque réponse doit avoir un record_hash différent
-# et audit_id croissant (1, 2, 3...)
 ```
+
+Vérifier que :
+- `audit_id` est croissant (1, 2, 3)
+- `record_hash` est différent à chaque fois
+- Les hashes sont chaînés (chaque hash inclut le `previous_hash`)
 
 ---
 
-## 9. Interface graphique (Swagger UI)
+## 7. Interface Swagger UI (API interactive)
 
-Accéder à la documentation API interactive :
+Accéder depuis n'importe quel navigateur sur le réseau LAN :
 
 ```
-https://192.168.1.10/docs    ← Node 1
-https://192.168.1.20/docs    ← Node 2
+https://192.168.1.10/docs    ← Node 1 Win11
+https://192.168.1.20/docs    ← Node 2 Win10
+https://192.168.1.30/docs    ← Node 3 Kali
 ```
 
-> Le navigateur demandera d'installer le certificat `config/nginx/certs/ca.crt`
-> comme CA de confiance, ou affichera un avertissement SSL (normal en dev).
+> Accepter l'alerte SSL (certificat auto-signé) ou importer `ca.crt`
+> dans le magasin de certificats du navigateur.
 
-Via Swagger, tester :
-- `POST /api/v1/data/ingest` — cliquer **Try it out**
+Via Swagger : tester **Try it out** sur :
+- `POST /api/v1/data/ingest`
 - `POST /api/v1/sync/reconcile`
 - `GET /health`
 
 ---
 
-## 10. Interface Frontend React
+## 8. Frontend React (Dashboard)
 
 ```
-https://192.168.1.10/     ← Dashboard Node 1
-https://192.168.1.20/     ← Dashboard Node 2
+https://192.168.1.10/    ← Dashboard Node 1
+https://192.168.1.20/    ← Dashboard Node 2
+https://192.168.1.30/    ← Dashboard Node 3
 ```
-
-Le frontend expose :
-- Vue tableau de bord du nœud
-- Historique des ingestions
-- Status Syncthing (via `/syncthing-api/`)
 
 ---
 
-## 11. Vérification de la sécurité TLS
+## 9. Vérifications sécurité TLS + mTLS
 
 ```bash
-# Vérifier que TLS 1.2 est refusé (seul TLS 1.3 accepté)
-openssl s_client -connect 192.168.1.10:443 -tls1_2 2>&1 | grep "handshake failure"
-# Attendu : "handshake failure" — TLS 1.2 rejeté ✅
+# Depuis Node 3 (Kali) — tester TLS 1.2 refusé
+openssl s_client -connect 192.168.1.10:443 -tls1_2 2>&1 | grep -E "handshake|error"
+# Attendu : handshake failure ✅ (TLS 1.2 rejeté)
 
-# Vérifier TLS 1.3 fonctionne
+# TLS 1.3 accepté
 openssl s_client -connect 192.168.1.10:443 -tls1_3 2>&1 | grep "Protocol"
-# Attendu : "Protocol  : TLSv1.3" ✅
+# Attendu : Protocol : TLSv1.3 ✅
 
-# Vérifier que sans certificat client on est rejeté (mTLS)
-curl -k https://192.168.1.10/api/v1/data/ingest 2>&1
-# Attendu : "400 No required SSL certificate was sent" ✅
+# mTLS — requête sans certificat client rejetée
+curl -k https://192.168.1.10/api/v1/data/ingest -X POST -H "Content-Type: application/json" -d '{}'
+# Attendu : 400 No required SSL certificate was sent ✅
 ```
 
 ---
 
-## 12. Scan de sécurité Bandit
+## 10. Arrêt propre
 
-```bash
-# Sur n'importe quel nœud avec Python
-pip install bandit
-bandit -r backend/app/ --severity-level medium
-# Résultat attendu : 0 HIGH, 0 CRITICAL
-```
-
----
-
-## 13. Arrêt propre du stack
-
-### Node 1 (PowerShell)
 ```powershell
+# Node 1 & Node 2 (PowerShell)
 docker compose down
-# Les données persistent dans data/ (volumes montés)
+```
+```bash
+# Node 3 (Kali)
+docker compose down
 ```
 
-### Node 2 (bash)
-```bash
-docker compose down
-```
+Les données persistent dans `data/` (volumes montés — non supprimés par `docker compose down`).
 
 ---
 
-## Checklist de validation POC complète
+## Checklist POC 3 nœuds
 
 ```
-[ ] Health check répond sur les 2 nœuds         ✓/✗
-[ ] Ingestion réussie sur Node 1                  ✓/✗
-[ ] Ingestion réussie sur Node 2                  ✓/✗
-[ ] Parquet synchronisé Node 1 → Node 2           ✓/✗
-[ ] Parquet synchronisé Node 2 → Node 1           ✓/✗
-[ ] Conflit Syncthing créé (.sync-conflict-*)     ✓/✗
-[ ] Réconciliation CRDT /reconcile OK             ✓/✗
-[ ] Fichier conflit supprimé après réconciliation  ✓/✗
-[ ] Audit trail avec hash chaîné                  ✓/✗
-[ ] TLS 1.2 refusé, TLS 1.3 accepté              ✓/✗
-[ ] mTLS : rejet sans certificat client           ✓/✗
-[ ] Swagger UI accessible sur /docs               ✓/✗
-[ ] Frontend React accessible sur /              ✓/✗
-[ ] Syncthing GUI accessible sur :8384            ✓/✗
-[ ] Bandit : 0 HIGH/CRITICAL                      ✓/✗
+Infrastructure
+[ ] Node 1 Win11   : docker compose ps → tous healthy         ✓/✗
+[ ] Node 2 Win10   : docker compose ps → tous healthy         ✓/✗
+[ ] Node 3 Kali    : docker compose ps → tous healthy         ✓/✗
+[ ] Syncthing maillage : 3 nœuds "Connecté" dans GUI          ✓/✗
+
+Fonctionnel
+[ ] Ingest Node 1 → succès (status:success)                   ✓/✗
+[ ] Ingest Node 3 → succès                                    ✓/✗
+[ ] Réplication Node 1 → Node 2 & 3 (Parquet synchronisé)     ✓/✗
+[ ] Réplication Node 3 → Node 1 & 2                           ✓/✗
+[ ] Conflit .sync-conflict-* créé                             ✓/✗
+[ ] Réconciliation /reconcile → conflicts_resolved: 1         ✓/✗
+[ ] Fichier conflit supprimé après réconciliation              ✓/✗
+[ ] Audit trail : audit_id croissant, record_hash unique       ✓/✗
+
+Sécurité
+[ ] TLS 1.2 refusé, TLS 1.3 accepté                          ✓/✗
+[ ] mTLS : 400 sans certificat client                         ✓/✗
+
+Interface
+[ ] Swagger /docs accessible sur les 3 nœuds                  ✓/✗
+[ ] Frontend / accessible sur les 3 nœuds                     ✓/✗
+[ ] Syncthing GUI :8384 accessible                            ✓/✗
 ```
 
 ---
 
 ## Dépannage rapide
 
-| Symptôme | Cause probable | Solution |
-|----------|----------------|----------|
-| `502 Bad Gateway` sur `/` | Frontend pas démarré | `docker compose logs sda-frontend` |
-| `400 No required SSL certificate` | mTLS actif — fournir le certificat client | Ajouter `--cert` et `--key` au curl |
-| Syncthing ne se connecte pas | Pare-feu bloque port 22000 | Ouvrir 22000 TCP+UDP sur les 2 VMs |
-| `.sync-conflict-*` ne disparaît pas | `/reconcile` n'a pas été appelé | `POST /api/v1/sync/reconcile` |
-| `500 Storage error` sous charge | DuckDB write-lock (comportement normal) | 1 seul writer par nœud en production |
-| Certificat non reconnu | CA non installée dans le navigateur | Importer `config/nginx/certs/ca.crt` |
+| Symptôme | Cause | Solution |
+|----------|-------|----------|
+| VM ne joint pas Node 1 | Pare-feu Win11 | Exécuter les règles PowerShell du §2 |
+| `502 Bad Gateway` sur `/` | Frontend non démarré | `docker compose logs sda-frontend` |
+| `400 No required SSL` | mTLS actif — normal | Fournir `--cert` et `--key` |
+| Syncthing ne se connecte pas | Port 22000 bloqué | Vérifier pare-feu sur les 2 nœuds |
+| `.sync-conflict-*` reste | `/reconcile` non appelé | `POST /api/v1/sync/reconcile` |
+| `500 Storage error` sous charge | DuckDB write-lock | Normal — 1 writer par nœud en prod |
+| Certificat invalide navigateur | CA auto-signée | Importer `config/nginx/certs/ca.crt` |
+| Parquet illisible inter-nœuds | Clés Fernet différentes | Utiliser les mêmes clés dans `.env` |
