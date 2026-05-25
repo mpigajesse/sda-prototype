@@ -1,0 +1,53 @@
+site_name: "SDA — Documentation Technique"
+site_description: "Sovereign Data Agent — Architecture Coffre-Fort Data P2P Souveraine"
+site_author: "MPIGA-ODOUMBA Jesse — EIGSI × AL BARAA CONSULTING"
+repo_url: https://github.com/mpigajesse/sda-prototype
+repo_name: mpigajesse/sda-prototype
+
+theme:
+  name: material
+  language: fr
+  palette:
+    - scheme: slate
+      primary: deep purple
+      accent: cyan
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - toc.integrate
+    - content.code.copy
+
+nav:
+  - Accueil: index.md
+  - Architecture:
+      - Vue d'ensemble: architecture/overview.md
+      - Modèle de données: architecture/data-model.md
+      - Sécurité: architecture/security.md
+  - Guide d'installation:
+      - Prérequis: install/prerequisites.md
+      - Démarrage rapide: install/quickstart.md
+      - Configuration multi-nœuds: install/multi-node.md
+  - API Reference:
+      - Ingestion: api/ingest.md
+      - Réconciliation P2P: api/reconcile.md
+      - Health Check: api/health.md
+  - Tests & Validation:
+      - Tests unitaires: tests/unit.md
+      - Tests de charge: tests/load.md
+      - Scans sécurité: tests/security.md
+  - Rapport de conformité: conformity.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+plugins:
+  - search:
+      lang: fr

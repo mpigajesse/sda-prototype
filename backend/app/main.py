@@ -16,12 +16,22 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+# Restriction CORS stricte au périmètre local du nœud (Code-to-Data paradigm).
+# En production multi-nœuds, ajouter les IP/hostnames des nœuds pairs.
+_CORS_ORIGINS = [
+    "http://localhost",
+    "http://localhost:3000",
+    "https://localhost",
+    "http://127.0.0.1",
+    "http://127.0.0.1:3000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Client-DN"],
 )
 
 app.include_router(data.router, prefix="/api/v1/data", tags=["Moteur de Données"])
