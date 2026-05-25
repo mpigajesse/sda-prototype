@@ -27,7 +27,8 @@ nav:
       - Prérequis: install/prerequisites.md
       - Démarrage rapide: install/quickstart.md
       - Configuration multi-nœuds: install/multi-node.md
-      - Démo complète 2 nœuds: install/demo-guide.md
+      - Déploiement nouveau nœud (VM / PC): install/node-deployment.md
+      - Démo complète 3 nœuds: install/demo-guide.md
   - API Reference:
       - Ingestion: api/ingest.md
       - Réconciliation P2P: api/reconcile.md
