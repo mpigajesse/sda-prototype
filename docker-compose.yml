@@ -29,7 +29,7 @@ services:
       - ./data/db:/app/data/db
       - ./data/shared_storage:/app/data/shared_storage
     environment:
-      - DB_SQLITE_PATH=/app/data/db/metadata.db
+      - DB_SQLITE_PATH=/app/data/db/metadata_enc.db
       - DB_DUCKDB_PATH=/app/data/db/analytics.duckdb
       - SHARED_STORAGE_PATH=/app/data/shared_storage
       # Active SQLCipher — désactivé en CI (pysqlcipher3 absent hors Docker)

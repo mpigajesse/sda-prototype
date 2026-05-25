@@ -28,6 +28,24 @@ os.makedirs(SHARED_STORAGE_PATH, exist_ok=True)
 # ---------------------------------------------------------------------------
 try:
     import pysqlcipher3.dbapi2 as _sqlcipher_dbapi
+
+    class _SQLCipherConn:
+        """Wraps a pysqlcipher3 connection to be compatible with SQLAlchemy 2.0.
+
+        SQLAlchemy 2.0 calls create_function(name, narg, func, deterministic=True)
+        (4 args), but pysqlcipher3 1.2.x only accepts 3. This wrapper intercepts
+        the call and drops the unsupported kwarg.
+        """
+
+        def __init__(self, raw_conn):
+            self._conn = raw_conn
+
+        def create_function(self, name: str, narg: int, func, deterministic: bool = False) -> None:
+            self._conn.create_function(name, narg, func)
+
+        def __getattr__(self, name: str):
+            return getattr(self._conn, name)
+
     _SQLCIPHER_AVAILABLE = True
 except ImportError:
     _SQLCIPHER_AVAILABLE = False
@@ -35,11 +53,11 @@ except ImportError:
 
 def _make_sqlite_connection():
     if _USE_SQLCIPHER and _SQLCIPHER_AVAILABLE and DB_ENCRYPTION_KEY:
-        conn = _sqlcipher_dbapi.connect(SQLITE_PATH)
-        conn.execute(f"PRAGMA key='{DB_ENCRYPTION_KEY}'")
-        conn.execute("PRAGMA cipher_page_size=4096")
-        conn.execute("PRAGMA kdf_iter=256000")
-        return conn
+        raw = _sqlcipher_dbapi.connect(SQLITE_PATH)
+        raw.execute(f"PRAGMA key='{DB_ENCRYPTION_KEY}'")
+        raw.execute("PRAGMA cipher_page_size=4096")
+        raw.execute("PRAGMA kdf_iter=256000")
+        return _SQLCipherConn(raw)
     # Fallback — plaintext (dev only)
     import sqlite3
     return sqlite3.connect(SQLITE_PATH, check_same_thread=False)
