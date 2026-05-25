@@ -1,0 +1,4 @@
+[bandit]
+targets = app/
+exclude_dirs = tests
+skips = B101

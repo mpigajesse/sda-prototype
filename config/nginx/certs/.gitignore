@@ -1,0 +1,7 @@
+# Clés privées et certificats — ne jamais commiter en production
+*.key
+*.crt
+*.csr
+*.srl
+# Garder le placeholder
+!.gitignore

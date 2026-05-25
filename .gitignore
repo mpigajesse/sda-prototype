@@ -1,0 +1,89 @@
+# =============================================================================
+# SDA Prototype — .gitignore
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Secrets & credentials — JAMAIS commiter
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.pfx
+
+# ---------------------------------------------------------------------------
+# Certificats TLS générés (config/nginx/certs/)
+# Le .gitignore DANS le dossier certs reste versionné
+# ---------------------------------------------------------------------------
+config/nginx/certs/*.key
+config/nginx/certs/*.crt
+config/nginx/certs/*.csr
+config/nginx/certs/*.srl
+
+# ---------------------------------------------------------------------------
+# Données runtime — volumes Docker
+# ---------------------------------------------------------------------------
+data/db/*.db
+data/db/*.duckdb
+data/db/*.db-shm
+data/db/*.db-wal
+data/shared_storage/*.parquet
+data/shared_storage/*.parquet.enc
+# Garder les placeholders vides
+!data/db/.gitkeep
+!data/shared_storage/.gitkeep
+
+# ---------------------------------------------------------------------------
+# Syncthing — config sensible et state
+# ---------------------------------------------------------------------------
+config/syncthing/config.xml
+config/syncthing/config.xml.v0
+config/syncthing/*.pem
+config/syncthing/index-v2/
+config/syncthing/*.lock
+!config/syncthing/.gitkeep
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# ---------------------------------------------------------------------------
+# Node.js / Frontend
+# ---------------------------------------------------------------------------
+node_modules/
+frontend/dist/
+frontend/build/
+*.local
+
+# ---------------------------------------------------------------------------
+# Docker volumes
+# ---------------------------------------------------------------------------
+.docker/
+
+# ---------------------------------------------------------------------------
+# Éditeurs & OS
+# ---------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*.log
