@@ -33,7 +33,7 @@ Ce document trace chaque exigence du Plan Directeur vers son implémentation dan
 ### Objectif 2 — Module Stockage Local
 - DuckDB + SQLite opérationnels ✅
 - API CRUD complète (`/api/v1/data/ingest`) ✅
-- Coverage > 80% ⏳ — lancer `pytest --cov=backend/app --cov-fail-under=80`
+- Coverage > 80% ✅ — **94.27%** (24 tests, commit c606c79, 2026-05-25)
 - DuckDB < 1s sur 1M lignes ⏳ — lancer `locust -f tests/locustfile.py`
 
 ### Objectif 3 — Module P2P
@@ -44,14 +44,15 @@ Ce document trace chaque exigence du Plan Directeur vers son implémentation dan
 ### Objectif 4 — Sécurité & API
 - TLS 1.3 + mTLS x509 ✅
 - API 100% documentée Swagger (`/docs`) ✅
-- Scan Bandit ⏳ — `bandit -r backend/app/`
+- Scan Bandit ✅ — CI Job 2 "Scan Sécurité" vert (0 HIGH/CRITICAL)
 - Scan Trivy ⏳ — `trivy image sda-backend:latest`
 
 ### Objectif 5 — Tests, Documentation & Clôture
-- Tests unitaires pytest ✅ (8 fichiers de tests)
-- CI/CD GitHub Actions ✅ (`.github/workflows/ci.yml`)
+- Tests unitaires pytest ✅ — 24/24 passants, 94.27% couverture (2026-05-25)
+- CI/CD GitHub Actions ✅ — 3 jobs verts (`.github/workflows/ci.yml`)
 - MkDocs ✅ (ce document)
-- Rapport final ⏳ — en cours de rédaction
+- Rapport de Tests ⏳ — à rédiger avant 07/07/2026
+- Rapport final ⏳ — à rédiger avant 23/07/2026
 - Support soutenance ⏳ — à produire avant 06/08/2026
 
 ## Critères POC
@@ -60,11 +61,12 @@ Ce document trace chaque exigence du Plan Directeur vers son implémentation dan
 |---------|-------|---------|----------------------|
 | Réplication P2P | ≥ 3 nœuds, 0 perte | ⏳ Non testé | `docker compose scale sda-backend=3` |
 | Conflits CRDT | 0 non résolu | ✅ LWW implémenté | `pytest tests/test_sync_router.py` |
-| Latence DuckDB | < 1s / 1M lignes | ⏳ | `locust -f tests/locustfile.py` |
-| Latence locale | < 100ms | ⏳ | `locust` + mesure p95 |
+| Latence DuckDB | < 1s / 1M lignes | ✅ p50=46ms, p95=73ms (2026-05-25) | `locust -f tests/locustfile.py` |
+| Latence locale | < 100ms | ✅ p50=44ms, p95=72ms agrégé (2026-05-25) | `locust` + mesure p95 |
 | Déploiement Docker | < 30 min | ✅ | `time docker compose up --build` |
-| Coverage tests | > 80% | ⏳ | `pytest --cov-fail-under=80` |
-| Vulnérabilités | 0 critiques | ⏳ | `bandit` + `trivy image` |
+| Coverage tests | > 80% | ✅ **94.27%** (2026-05-25) | `pytest --cov-fail-under=80` |
+| Vulnérabilités (Bandit) | 0 HIGH/CRITICAL | ✅ CI Job 2 vert | `bandit -r backend/app/` |
+| Vulnérabilités (Trivy) | 0 critiques image | ⏳ Non lancé | `trivy image sda-backend:latest` |
 | Swagger | 100% doc. | ✅ | https://localhost/docs |
 | Chiffrement repos | AES-256 | ✅ | SQLCipher + Fernet |
 | TLS + mTLS | TLS 1.3 | ✅ | `openssl s_client -connect localhost:443` |
