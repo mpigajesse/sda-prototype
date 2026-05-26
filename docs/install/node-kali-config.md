@@ -126,7 +126,7 @@ sda-parquet  # → node3_kali_storage.parquet créé
 | GUI accessible | ✅ `http://localhost:8384` |
 | ID complet connu | ✅ `VFTEXUZ-3T7QLXH-7ZBFASM-HCWNSKZ-END5ADX-SHD4HHE-IYGGR6I-PME5LQK` |
 | Dossier `SDA_Shared` ajouté | ✅ `/var/syncthing/SDA_Shared` |
-| Mot de passe GUI configuré | ⏳ Recommandé |
+| Mot de passe GUI configuré | ✅ Configuré (`sda-admin-kali`) |
 | Couplage avec Node 1 Win11 | ✅ Connecté — réplication bidirectionnelle validée |
 | Couplage avec Node 2 Win10 | ⏳ À faire |
 
@@ -206,15 +206,18 @@ node3_kali_storage.parquet   1036  26/05/2026 08:29  ← synchronisé depuis Kal
 
 ---
 
-## Sécurisation recommandée (Syncthing GUI)
+## Sécurisation Syncthing GUI — ✅ Configurée
 
-La GUI Syncthing est accessible sans mot de passe depuis le réseau local.
+La GUI Syncthing était accessible sans mot de passe depuis le réseau local.
 
-**Configuration → GUI → Authentification** :
+**Configuration appliquée** (`http://localhost:8384` → Actions → Configuration → Interface graphique) :
 ```
-Nom d'utilisateur : sda-admin
-Mot de passe      : <mot de passe fort>
+Nom d'utilisateur : sda-admin-kali
+Mot de passe      : <mot de passe fort — min. 12 car., maj+min+chiffres+spéciaux>
 ```
+
+**Effet :** HTTP 401 retourné à toute requête non authentifiée.  
+**Traçabilité :** l'identifiant `sda-admin-kali` permet d'identifier le nœud source dans les logs en cas d'incident.
 
 ---
 

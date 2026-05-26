@@ -94,17 +94,25 @@ L'interface d'administration Syncthing (`http://localhost:8384`) était accessib
 
 ### 3.2 Configuration appliquée
 
-Sur **Node 1 (Win11)** et **Node 3 (Kali)** :
+Chemin de configuration identique sur tous les nœuds :
 
 ```
 Syncthing GUI → Actions → Configuration → Onglet "Interface graphique"
 ```
 
+| Nœud | Système | Utilisateur configuré | Statut |
+|------|---------|----------------------|--------|
+| Node 1 | Win11 (hôte VMware) | `sda-admin-Win11` | ✅ Configuré |
+| Node 3 | Kali Linux VM | `sda-admin-kali` | ✅ Configuré |
+| Node 2 | Win10 VM | `sda-admin-Win10` | ⏳ À configurer |
+
 | Champ | Valeur configurée |
 |-------|------------------|
-| Utilisateur | `sda-admin` |
-| Mot de passe | Mot de passe fort (min. 12 car., maj+min+chiffres+spéciaux) |
+| Utilisateur | Voir tableau ci-dessus (nom spécifique au nœud) |
+| Mot de passe | Mot de passe fort partagé (min. 12 car., maj+min+chiffres+spéciaux) |
 | HTTPS GUI | Activé si disponible |
+
+> **Principe de sécurité :** chaque nœud a un identifiant distinct (`sda-admin-Win11`, `sda-admin-kali`, `sda-admin-Win10`) pour permettre la traçabilité des accès dans les logs — si une session est compromise, l'identifiant trahit immédiatement quel nœud est affecté.
 
 **Effet :** toute tentative d'accès à `http://localhost:8384` déclenche une authentification HTTP Basic. Sans credentials valides, l'accès est refusé avec HTTP 401.
 
@@ -197,7 +205,7 @@ sudo ufw reload
 | Chiffrement en transit (TLS 1.3) | Nginx TLS 1.3 + Syncthing BEP/TLS 1.3 | ✅ |
 | Authentification mutuelle | mTLS x509 (API) + Device ID SHA-256 (P2P) | ✅ |
 | Intégrité des données | HMAC-SHA256 Fernet + SHA-256 audit chain | ✅ |
-| Authentification admin | Syncthing GUI HTTP Basic (sda-admin) | ✅ |
+| Authentification admin | Syncthing GUI HTTP Basic (sda-admin-Win11 / sda-admin-kali) | ✅ |
 | Isolation réseau | VMware VMnet1 Host-Only, pas d'exposition Internet | ✅ |
 | Secrets hors dépôt | `.env` dans `.gitignore`, jamais versionné | ✅ |
 | 0 vulnérabilité critique | Bandit scan + Trivy image scan | ✅ CI |
