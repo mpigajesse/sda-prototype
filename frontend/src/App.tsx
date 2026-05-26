@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Cpu, MemoryStick, Clock, Shield, RefreshCw } from 'lucide-react'
 import {
-  fetchSystem, fetchVersion, fetchConfig, fetchConnections, fetchSDAHealth,
+  fetchSystem, fetchVersion, fetchConfig, fetchConnections, fetchSDAHealth, fetchNodeInfo,
   type SyncthingSystem, type SyncthingFolder, type SyncthingDevice, type SyncthingConnections,
 } from './api/syncthing'
 import { Sidebar, type SidebarSection } from './components/Sidebar'
@@ -39,7 +39,7 @@ function SectionHeader({ title, accent, count }: { title: string; accent: string
 export default function App() {
   const [system, setSystem] = useState<SyncthingSystem | null>(null)
   const [version, setVersion] = useState<string>('')
-  const [osArch, setOsArch] = useState<{ os: string; arch: string }>({ os: '—', arch: '—' })
+  const [hostPlatform, setHostPlatform] = useState<string>('—')
   const [folders, setFolders] = useState<SyncthingFolder[]>([])
   const [devices, setDevices] = useState<SyncthingDevice[]>([])
   const [connections, setConnections] = useState<SyncthingConnections | null>(null)
@@ -56,16 +56,17 @@ export default function App() {
     loadingRef.current = true
     setIsRefreshing(true)
     try {
-      const [sys, ver, cfg, conn, sda] = await Promise.all([
+      const [sys, ver, cfg, conn, sda, nodeInfo] = await Promise.all([
         fetchSystem(),
         fetchVersion(),
         fetchConfig(),
         fetchConnections(),
         fetchSDAHealth().catch(() => ({ status: 'unreachable', offline_ready: false })),
+        fetchNodeInfo().catch(() => ({ host_os: '—', host_os_release: '—', host_arch: '—', host_hostname: '—' })),
       ])
       setSystem(sys)
       setVersion(ver.version)
-      setOsArch({ os: ver.os, arch: ver.arch })
+      setHostPlatform(`${nodeInfo.host_os} ${nodeInfo.host_os_release} (${nodeInfo.host_arch})`)
       setFolders(cfg.folders ?? [])
       setDevices(cfg.devices ?? [])
       setConnections(conn)
@@ -100,8 +101,7 @@ export default function App() {
               <NodeIdentityCard
                 deviceId={system.myID}
                 version={`Syncthing ${version}`}
-                os={osArch.os}
-                arch={osArch.arch}
+                hostPlatform={hostPlatform}
                 connectedPeers={connectedPeers}
                 totalPeers={totalPeers}
               />
@@ -119,7 +119,7 @@ export default function App() {
               <MetricCard
                 icon={MemoryStick}
                 label="Mémoire"
-                value={system ? formatMem(system.mem) : '—'}
+                value={system ? formatMem(system.alloc) : '—'}
                 sub="consommée"
                 accent="text-blue-400"
                 loading={!system}

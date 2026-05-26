@@ -9,7 +9,8 @@ async function get<T>(path: string): Promise<T> {
 export interface SyncthingSystem {
   myID: string
   cpuPercent: number
-  mem: number
+  alloc: number
+  sys: number
   uptime: number
   version: string
   goroutines: number
@@ -87,5 +88,11 @@ export async function fetchEvents(since = 0): Promise<SyncthingEvent[]> {
 export async function fetchSDAHealth(): Promise<{ status: string; offline_ready: boolean }> {
   const res = await fetch('/sda-api/health')
   if (!res.ok) throw new Error('SDA backend unreachable')
+  return res.json()
+}
+
+export async function fetchNodeInfo(): Promise<{ host_os: string; host_os_release: string; host_arch: string; host_hostname: string }> {
+  const res = await fetch('/api/v1/node/info')
+  if (!res.ok) throw new Error('Node info unreachable')
   return res.json()
 }

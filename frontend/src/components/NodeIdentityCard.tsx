@@ -4,8 +4,7 @@ import { Fingerprint, Tag, Monitor, Users, Copy, Check, Zap } from 'lucide-react
 interface NodeIdentityCardProps {
   deviceId: string
   version: string
-  os: string
-  arch: string
+  hostPlatform: string
   connectedPeers: number
   totalPeers: number
 }
@@ -22,8 +21,7 @@ function formatDeviceIdMobile(id: string): string {
 export function NodeIdentityCard({
   deviceId,
   version,
-  os,
-  arch,
+  hostPlatform,
   connectedPeers,
   totalPeers,
 }: NodeIdentityCardProps) {
@@ -44,7 +42,7 @@ export function NodeIdentityCard({
 
   const infoCells = [
     { icon: Tag, label: 'Version', value: version },
-    { icon: Monitor, label: 'Plateforme', value: `${os}/${arch}` },
+    { icon: Monitor, label: 'Plateforme', value: hostPlatform },
     { icon: Users, label: 'Pairs', value: `${connectedPeers}/${totalPeers}` },
     { icon: Zap, label: 'État', value: 'Synchronisé' },
   ]

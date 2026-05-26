@@ -1,3 +1,4 @@
+import platform
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base
@@ -45,4 +46,14 @@ def health_check():
         "architecture": "local-first / distributed",
         "central_dependency": "none",
         "offline_ready": True,
+    }
+
+
+@app.get("/api/v1/node/info", tags=["Système"])
+def node_info():
+    return {
+        "host_os": platform.system(),
+        "host_os_release": platform.release(),
+        "host_arch": platform.machine(),
+        "host_hostname": platform.node(),
     }
