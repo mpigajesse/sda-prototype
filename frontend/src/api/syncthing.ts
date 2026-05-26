@@ -12,8 +12,6 @@ export interface SyncthingSystem {
   mem: number
   uptime: number
   version: string
-  os: string
-  arch: string
   goroutines: number
 }
 
@@ -66,7 +64,7 @@ export async function fetchSystem(): Promise<SyncthingSystem> {
   return get('/system/status')
 }
 
-export async function fetchVersion(): Promise<{ version: string; longVersion: string }> {
+export async function fetchVersion(): Promise<{ version: string; longVersion: string; os: string; arch: string }> {
   return get('/system/version')
 }
 

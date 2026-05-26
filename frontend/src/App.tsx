@@ -39,6 +39,7 @@ function SectionHeader({ title, accent, count }: { title: string; accent: string
 export default function App() {
   const [system, setSystem] = useState<SyncthingSystem | null>(null)
   const [version, setVersion] = useState<string>('')
+  const [osArch, setOsArch] = useState<{ os: string; arch: string }>({ os: '—', arch: '—' })
   const [folders, setFolders] = useState<SyncthingFolder[]>([])
   const [devices, setDevices] = useState<SyncthingDevice[]>([])
   const [connections, setConnections] = useState<SyncthingConnections | null>(null)
@@ -64,6 +65,7 @@ export default function App() {
       ])
       setSystem(sys)
       setVersion(ver.version)
+      setOsArch({ os: ver.os, arch: ver.arch })
       setFolders(cfg.folders ?? [])
       setDevices(cfg.devices ?? [])
       setConnections(conn)
@@ -98,8 +100,8 @@ export default function App() {
               <NodeIdentityCard
                 deviceId={system.myID}
                 version={`Syncthing ${version}`}
-                os={system.os}
-                arch={system.arch}
+                os={osArch.os}
+                arch={osArch.arch}
                 connectedPeers={connectedPeers}
                 totalPeers={totalPeers}
               />
