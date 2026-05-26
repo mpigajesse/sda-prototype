@@ -28,6 +28,7 @@ nav:
       - Démarrage rapide: install/quickstart.md
       - Configuration multi-nœuds: install/multi-node.md
       - Déploiement nouveau nœud (VM / PC): install/node-deployment.md
+      - Config Node 3 — Kali Linux: install/node-kali-config.md
       - Démo complète 3 nœuds: install/demo-guide.md
   - API Reference:
       - Ingestion: api/ingest.md
