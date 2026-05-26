@@ -2,7 +2,14 @@
 # Aliases SDA — sourcer dans ~/.zshrc ou ~/.bashrc
 # Usage : source ~/PFE/sda-prototype/scripts/sda-aliases.sh
 
-SDA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Compatible bash et zsh (BASH_SOURCE inexistant dans zsh lors d'un source)
+_SDA_SELF="${BASH_SOURCE[0]:-${(%):-%x}}"
+if [ -n "$_SDA_SELF" ] && [ "$_SDA_SELF" != "bash" ] && [ "$_SDA_SELF" != "zsh" ]; then
+    SDA_DIR="$(cd "$(dirname "$_SDA_SELF")/.." && pwd)"
+else
+    # Fallback : chemin standard du projet
+    SDA_DIR="${HOME}/PFE/sda-prototype"
+fi
 
 # --- Raccourcis docker compose ---
 alias sda-up="docker compose -f $SDA_DIR/docker-compose.yml up -d"
