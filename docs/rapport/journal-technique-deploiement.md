@@ -447,15 +447,99 @@ Ces fichiers Syncthing internes ne doivent pas apparaître dans git.
 
 ---
 
-## 9. État final validé
+## 9. Corrections dashboard frontend — Plateforme et Mémoire
 
-### 9.1 Tableau de bord Win11
+### 9.1 Problème — `Plateforme: undefined/undefined`
+
+**Symptôme :** Le composant `NodeIdentityCard` affiche `undefined/undefined` pour le champ Plateforme sur tous les nœuds.
+
+**Cause technique :**  
+L'interface TypeScript `SyncthingSystem` déclarait les champs `os` et `arch`, supposés venir de `/rest/system/status`. Or cet endpoint ne retourne pas ces champs — ils proviennent de `/rest/system/version` :
+
+```json
+// /rest/system/status — champs retournés :
+{ "alloc": 3718720, "cpuPercent": 0, "myID": "...", "uptime": 1630, "sys": 19933464, ... }
+// ABSENT : os, arch
+
+// /rest/system/version — champs retournés :
+{ "arch": "amd64", "os": "linux", "version": "v2.1.0", ... }
+```
+
+TypeScript ne signale aucune erreur car le cast `as Promise<T>` sur `fetch().json()` est non-vérifié — les champs manquants sont silencieusement `undefined` au runtime.
+
+**Fix — Endpoint backend `/api/v1/node/info` :**  
+Plutôt que d'afficher `linux/amd64` (plateforme du conteneur), un endpoint FastAPI expose l'OS réel de la machine hôte via le module Python `platform` :
+
+```python
+import platform
+
+@app.get("/api/v1/node/info", tags=["Système"])
+def node_info():
+    return {
+        "host_os": platform.system(),
+        "host_os_release": platform.release(),
+        "host_arch": platform.machine(),
+        "host_hostname": platform.node(),
+    }
+```
+
+**Résultat par nœud :**
+
+| Nœud | Plateforme affichée |
+|------|---------------------|
+| Win11 | `Linux 6.6.114.1-microsoft-standard-WSL2 (x86_64)` |
+| Kali | `Linux 6.x.x (x86_64)` |
+| Win10 | `Linux x.x.x (x86_64)` |
+
+> Le kernel affiché sur Win11 est celui de **WSL2** (Windows Subsystem for Linux) — comportement normal car Docker Desktop sur Windows utilise WSL2 comme backend.
+
+**Capture :** `[SCREENSHOT: dashboard_plateforme_undefined.png]`  
+**Capture :** `[SCREENSHOT: dashboard_plateforme_corrigee.png]`
+
+---
+
+### 9.2 Problème — `Mémoire: NaN MB`
+
+**Symptôme :** La MetricCard Mémoire affiche `NaN MB` sur Win11 et Kali.
+
+**Cause technique :**  
+L'interface TypeScript déclarait `mem: number` dans `SyncthingSystem`, mais l'API `/rest/system/status` ne retourne pas de champ `mem`. Les champs réels sont `alloc` (heap Go alloué) et `sys` (mémoire totale obtenue de l'OS) :
+
+```typescript
+// AVANT — champ inexistant → undefined → NaN
+interface SyncthingSystem { mem: number }
+formatMem(system.mem)  // NaN MB
+
+// APRÈS — champ correct
+interface SyncthingSystem { alloc: number; sys: number }
+formatMem(system.alloc)  // ex: "4 MB"
+```
+
+**Valeurs typiques :**
+
+| Champ | Signification | Valeur observée |
+|-------|---------------|-----------------|
+| `alloc` | Heap Go actuellement alloué | ~3–8 MB |
+| `sys` | Mémoire totale réservée par l'OS | ~19–25 MB |
+
+`alloc` est la métrique la plus pertinente pour monitorer la consommation réelle de Syncthing.
+
+**Capture :** `[SCREENSHOT: dashboard_memoire_nan.png]`  
+**Capture :** `[SCREENSHOT: dashboard_memoire_corrigee.png]`
+
+---
+
+## 10. État final validé
+
+### 10.1 Tableau de bord Win11
 
 | Indicateur | Valeur |
 |-----------|--------|
 | Backend | Opérationnel |
 | Pairs connectés | 1/1 |
 | Syncthing version | v2.1.0 |
+| Plateforme | `Linux 6.6.114.1-microsoft-standard-WSL2 (x86_64)` |
+| Mémoire | ~4 MB (heap Syncthing) |
 | Sync SDA_Shared | 100% — 15 fichiers |
 | Taille totale | 22.4 KB |
 | Type connexion | TCP direct LAN |
@@ -463,20 +547,22 @@ Ces fichiers Syncthing internes ne doivent pas apparaître dans git.
 
 **Capture :** `[SCREENSHOT: win11_dashboard_final_100pct.png]`
 
-### 9.2 Tableau de bord Kali
+### 10.2 Tableau de bord Kali
 
 | Indicateur | Valeur |
 |-----------|--------|
 | Backend | Opérationnel |
 | Pairs connectés | 1/1 |
 | Syncthing version | v2.1.0 |
+| Plateforme | `Linux 6.x.x (x86_64)` |
+| Mémoire | ~4 MB |
 | Sync SDA_Shared | 100% — 15 fichiers |
 | Taille totale | 22.4 KB |
 | Device ID | VFTEXUZ-3T7QLXH-7ZBFASM-... |
 
 **Capture :** `[SCREENSHOT: kali_dashboard_final_100pct.png]`
 
-### 9.3 Commits git de la session
+### 10.3 Commits git de la session
 
 | Hash | Type | Description |
 |------|------|-------------|
@@ -484,8 +570,11 @@ Ces fichiers Syncthing internes ne doivent pas apparaître dans git.
 | `...` | `feat` | docs: guide déploiement multi-nœuds (mTLS navigateur) |
 | `2b6a7bd` | `fix` | nginx: corriger chemin proxy Syncthing API (`/rest/` doublé) |
 | `7ffeece` | `chore` | gitignore: exclure `.stfolder` et `.sync-conflict-*` |
+| `a23f2d8` | `docs` | journal technique déploiement mTLS + sync P2P |
+| `5590d5f` | `fix` | frontend: os/arch depuis `/system/version` |
+| `ab481ec` | `fix` | frontend+backend: OS hôte réel + mémoire NaN corrigée |
 
-### 9.4 Critères de succès POC — État
+### 10.4 Critères de succès POC — État
 
 | Critère | Cible | Résultat |
 |---------|-------|----------|
@@ -495,10 +584,12 @@ Ces fichiers Syncthing internes ne doivent pas apparaître dans git.
 | Déploiement Docker | < 30 min | ✅ (~15 min sur nœud neuf) |
 | Accès HTTPS mTLS | Navigateur + cert client | ✅ Chrome Win11 + Firefox Kali |
 | Test couverture | > 80% | ✅ (CI GitHub Actions) |
+| Dashboard — Plateforme | OS hôte réel | ✅ WSL2/Linux affiché |
+| Dashboard — Mémoire | Valeur numérique MB | ✅ NaN corrigé |
 
 ---
 
-## 10. Index des captures d'écran
+## 11. Index des captures d'écran
 
 > **Instructions :** Insérer les captures dans le dossier `docs/rapport/screenshots/` et remplacer les balises `[SCREENSHOT: xxx.png]` par les chemins relatifs dans le rapport final.
 
@@ -518,8 +609,12 @@ Ces fichiers Syncthing internes ne doivent pas apparaître dans git.
 | `syncthing_win11_peer_lan_config.png` | Config adresse LAN direct sur Win11 | 7.2 |
 | `syncthing_kali_peer_lan_config.png` | Config adresse LAN direct sur Kali | 7.2 |
 | `syncthing_direct_tcp_connection.png` | Connexion TCP directe établie | 7.2 |
-| `win11_dashboard_final_100pct.png` | État final Win11 — 100% sync | 9.1 |
-| `kali_dashboard_final_100pct.png` | État final Kali — 100% sync | 9.2 |
+| `dashboard_plateforme_undefined.png` | Plateforme `undefined/undefined` avant fix | 9.1 |
+| `dashboard_plateforme_corrigee.png` | Plateforme OS hôte après fix | 9.1 |
+| `dashboard_memoire_nan.png` | Mémoire `NaN MB` avant fix | 9.2 |
+| `dashboard_memoire_corrigee.png` | Mémoire en MB après fix | 9.2 |
+| `win11_dashboard_final_100pct.png` | État final Win11 — 100% sync | 10.1 |
+| `kali_dashboard_final_100pct.png` | État final Kali — 100% sync | 10.2 |
 
 ---
 
