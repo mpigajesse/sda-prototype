@@ -125,9 +125,9 @@ sda-parquet  # → node3_kali_storage.parquet créé
 |---------|--------|
 | GUI accessible | ✅ `http://localhost:8384` |
 | ID complet connu | ✅ `VFTEXUZ-3T7QLXH-7ZBFASM-HCWNSKZ-END5ADX-SHD4HHE-IYGGR6I-PME5LQK` |
-| Dossier `SDA_Shared` ajouté | ⏳ À faire |
+| Dossier `SDA_Shared` ajouté | ✅ `/var/syncthing/SDA_Shared` |
 | Mot de passe GUI configuré | ⏳ Recommandé |
-| Couplage avec Node 1 Win11 | ⏳ À faire |
+| Couplage avec Node 1 Win11 | ✅ Connecté — réplication bidirectionnelle validée |
 | Couplage avec Node 2 Win10 | ⏳ À faire |
 
 ### Procédure de couplage
@@ -159,17 +159,32 @@ sda-parquet  # → node3_kali_storage.parquet créé
 
 Sur `http://localhost:8384` (Win11) : notification *"Node3-Kali veut se connecter"* → **Ajouter** → partager `SDA_Shared`
 
-#### D. Test de réplication bout en bout
+#### D. Test de réplication bout en bout ✅ VALIDÉ — 2026-05-26
 
 ```bash
 # Injecter depuis Kali
 sda-ingest
+# → {"status": "success", "tenant_id": "node3_kali", "audit_id": 1, "record_hash": "ad123..."}
 
-# Vérifier que le fichier apparaît sur Win11 (après 5-30s)
-# Sur Win11 PowerShell :
-# Get-ChildItem D:\PFE\sda-prototype\data\shared_storage\
-# → node3_kali_storage.parquet doit apparaître
+# Vérifier les fichiers synchronisés
+ls -lh ~/PFE/sda-prototype/data/shared_storage/
 ```
+
+**Résultat observé sur Kali :**
+```
+node1_win11_storage.parquet   976  May 25 21:43  ← synchronisé depuis Win11 ✅
+node1_demo_storage.parquet    826  May 25 21:45  ← synchronisé depuis Win11 ✅
+node3_kali_storage.parquet   1.1K  May 26 08:29  ← créé localement sur Kali ✅
+bench_test_storage.parquet    623  May 25 20:01  ← synchronisé depuis Win11 ✅
+tenant_000..009 (×10)         ...  May 25 20:00  ← benchmarks Win11         ✅
+```
+
+**Résultat observé sur Win11 :**
+```
+node3_kali_storage.parquet   1036  26/05/2026 08:29  ← synchronisé depuis Kali ✅
+```
+
+**Réplication P2P bidirectionnelle Win11 ↔ Kali : VALIDÉE.**
 
 ---
 
