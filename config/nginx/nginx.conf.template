@@ -46,11 +46,14 @@ server {
     }
 
     # Syncthing API — proxy vers GUI :8384
+    # syncthing-key.conf contient : proxy_set_header X-API-Key "xxxxx";
+    # Généré par scripts/setup-syncthing-key.sh sur chaque nœud (non versionné)
     location /syncthing-api/ {
         proxy_pass         http://syncthing:8384/;
         proxy_set_header   Host              $host;
         proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header   X-Requested-With  XMLHttpRequest;
+        include            /etc/nginx/certs/syncthing-key.conf;
     }
 
     # Frontend React
