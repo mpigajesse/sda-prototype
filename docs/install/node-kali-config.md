@@ -14,7 +14,7 @@
 | Nom d'hôte Docker | `ec92ab7f9f4a` (container ID Syncthing) |
 | Identifiant Syncthing (abrégé) | `VFTEXUZ` |
 | Identifiant Syncthing (complet) | `VFTEXUZ-3T7QLXH-7ZBFASM-HCWNSKZ-END5ADX-SHD4HHE-IYGGR6I-PME5LQK` |
-| IP LAN | *(à compléter — `ip a show eth0`)* |
+| IP LAN | `192.168.1.20` (eth0) |
 | Rôle dans le mesh | Nœud de réplication P2P |
 
 ---
@@ -151,6 +151,7 @@ sda-parquet  # → node3_kali_storage.parquet créé
 | ID | *(ID Syncthing Node 1 Win11 — `http://192.168.1.10:8384` → Actions → Voir l'ID)* |
 | Nom | `Node1-Win11` |
 | Adresse | `tcp://192.168.1.10:22000` |
+| Adresse Kali (à donner à Win11) | `tcp://192.168.1.20:22000` |
 | Partage | Cocher `SDA_Shared` |
 
 #### C. Accepter sur Node 1 Win11
