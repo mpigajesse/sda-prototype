@@ -50,7 +50,7 @@ server {
     # Syncthing API — utilisé par le dashboard frontend
     # SYNCTHING_API_KEY injecté depuis .env via envsubst
     location /syncthing-api/ {
-        proxy_pass         http://syncthing:8384/rest/;
+        proxy_pass         http://syncthing:8384/;
         proxy_set_header   Host              $host;
         proxy_set_header   X-API-Key         ${SYNCTHING_API_KEY};
         proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
