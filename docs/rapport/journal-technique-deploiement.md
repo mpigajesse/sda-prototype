@@ -348,7 +348,7 @@ Chaque nœud dispose d'un compte administrateur distinct pour traçabilité :
 |------|----------------------|
 | Win11 | `sda-admin-Win11` |
 | Kali | `sda-admin-kali` |
-| Win10 (à déployer) | `sda-admin-Win10` |
+| Ubuntu (à déployer) | `sda-admin-ubuntu` |
 
 ### 6.2 Mot de passe chiffré Syncthing (dossier partagé)
 
@@ -489,7 +489,7 @@ def node_info():
 |------|---------------------|
 | Win11 | `Linux 6.6.114.1-microsoft-standard-WSL2 (x86_64)` |
 | Kali | `Linux 6.x.x (x86_64)` |
-| Win10 | `Linux x.x.x (x86_64)` |
+| Ubuntu | `Linux 6.x.x (x86_64)` |
 
 > Le kernel affiché sur Win11 est celui de **WSL2** (Windows Subsystem for Linux) — comportement normal car Docker Desktop sur Windows utilise WSL2 comme backend.
 

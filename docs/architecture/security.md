@@ -104,7 +104,7 @@ Syncthing GUI → Actions → Configuration → Onglet "Interface graphique"
 |------|---------|----------------------|--------|
 | Node 1 | Win11 (hôte VMware) | `sda-admin-Win11` | ✅ Configuré |
 | Node 3 | Kali Linux VM | `sda-admin-kali` | ✅ Configuré |
-| Node 2 | Win10 VM | `sda-admin-Win10` | ⏳ À configurer |
+| Node 2 | Ubuntu VM | `sda-admin-ubuntu` | ⏳ À configurer |
 
 | Champ | Valeur configurée |
 |-------|------------------|
@@ -112,7 +112,7 @@ Syncthing GUI → Actions → Configuration → Onglet "Interface graphique"
 | Mot de passe | Mot de passe fort partagé (min. 12 car., maj+min+chiffres+spéciaux) |
 | HTTPS GUI | Activé si disponible |
 
-> **Principe de sécurité :** chaque nœud a un identifiant distinct (`sda-admin-Win11`, `sda-admin-kali`, `sda-admin-Win10`) pour permettre la traçabilité des accès dans les logs — si une session est compromise, l'identifiant trahit immédiatement quel nœud est affecté.
+> **Principe de sécurité :** chaque nœud a un identifiant distinct (`sda-admin-Win11`, `sda-admin-kali`, `sda-admin-ubuntu`) pour permettre la traçabilité des accès dans les logs — si une session est compromise, l'identifiant trahit immédiatement quel nœud est affecté.
 
 **Effet :** toute tentative d'accès à `http://localhost:8384` déclenche une authentification HTTP Basic. Sans credentials valides, l'accès est refusé avec HTTP 401.
 

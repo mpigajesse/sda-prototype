@@ -1,5 +1,9 @@
 # SDA Nginx — virtual host config (inclus via /etc/nginx/conf.d/)
 # Les directives globales (worker_processes, events) sont dans /etc/nginx/nginx.conf
+#
+# IMPORTANT : les variables nginx ($host, $remote_addr, etc.) sont écrites
+# avec $$ dans ce template car envsubst les remplacerait par des chaînes vides.
+# $$ → $ après traitement par envsubst (comportement standard shell).
 
 # -----------------------------------------------------------------------
 # HTTPS — TLS 1.3 + mTLS x509
@@ -28,11 +32,11 @@ server {
     # Backend API REST
     location /api/ {
         proxy_pass         http://sda-backend:8000;
-        proxy_set_header   Host              $host;
-        proxy_set_header   X-Real-IP         $remote_addr;
-        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
-        proxy_set_header   X-Forwarded-Proto $scheme;
-        proxy_set_header   X-Client-DN       $ssl_client_s_dn;
+        proxy_set_header   Host              $$host;
+        proxy_set_header   X-Real-IP         $$remote_addr;
+        proxy_set_header   X-Forwarded-For   $$proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $$scheme;
+        proxy_set_header   X-Client-DN       $$ssl_client_s_dn;
     }
 
     location /health {
@@ -51,17 +55,17 @@ server {
     # SYNCTHING_API_KEY injecté depuis .env via envsubst
     location /syncthing-api/ {
         proxy_pass         http://syncthing:8384/;
-        proxy_set_header   Host              $host;
+        proxy_set_header   Host              $$host;
         proxy_set_header   X-API-Key         ${SYNCTHING_API_KEY};
-        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-For   $$proxy_add_x_forwarded_for;
         proxy_set_header   X-Requested-With  XMLHttpRequest;
     }
 
     # Frontend React
     location / {
         proxy_pass         http://sda-frontend:3000;
-        proxy_set_header   Host            $host;
-        proxy_set_header   X-Real-IP       $remote_addr;
+        proxy_set_header   Host            $$host;
+        proxy_set_header   X-Real-IP       $$remote_addr;
     }
 }
 
@@ -69,5 +73,5 @@ server {
 server {
     listen 80;
     server_name _;
-    return 301 https://$host$request_uri;
+    return 301 https://$$host$$request_uri;
 }

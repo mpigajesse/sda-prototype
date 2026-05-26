@@ -2,7 +2,7 @@
 
 **Contexte :**
 - Node 1 = **PC physique Windows 11** — prototype déjà opérationnel ✅
-- Node 2 = VM Windows 10
+- Node 2 = VM Ubuntu 26.04 LTS "resolute" (vCPU: 2, RAM: 4 GB, Disk: 120 GB LVM)
 - Node 3 = VM Kali Linux
 
 **Durée estimée :** 15 min (Node 1 déjà prêt) + 30 min (Nodes 2 & 3) + 20 min (tests)
@@ -29,7 +29,7 @@
     │             │
     ▼             ▼
 ┌──────────────────────────┐     ┌──────────────────────────┐
-│  NODE 2 — Windows 10 VM  │     │  NODE 3 — Kali Linux VM  │
+│  NODE 2 — Ubuntu 26.04 VM│     │  NODE 3 — Kali Linux VM  │
 │                          │─────│                          │
 │  docker compose up       │     │  docker compose up       │
 │  ┌──────────────────┐    │     │  ┌──────────────────┐    │
@@ -48,11 +48,11 @@
 | Nœud | OS | Type | IP LAN | Statut |
 |------|----|------|--------|--------|
 | Node 1 | Windows 11 | PC physique | `192.168.1.10` | ✅ Déjà prêt |
-| Node 2 | Windows 10 | VM | `192.168.1.20` | À déployer |
+| Node 2 | Ubuntu 26.04 LTS | VM | LAN: `192.168.200.130` / WAN: `192.168.1.40` | 🔄 En cours |
 | Node 3 | Kali Linux | VM | `192.168.1.30` | À déployer |
 
 > Trouver ton IP sur Windows 11 : `ipconfig` → "Adresse IPv4"
-> Trouver ton IP sur Kali : `ip a show eth0`
+> Trouver ton IP sur Ubuntu/Kali : `ip a show eth0` ou `ip a show ens33`
 
 ---
 
@@ -101,34 +101,49 @@ New-NetFirewallRule -DisplayName "SDA-SyncGUI"    -Direction Inbound -Protocol T
 
 ---
 
-## 3. Node 2 — VM Windows 10
+## 3. Node 2 — VM Ubuntu 24.04 LTS
+
+> **Identifiants VM** : user `ubuntu` / mot de passe `ubuntu` — `sudo su -` pour root.
 
 ### 3.1 Prérequis
 
-```powershell
-# Installer Docker Desktop si absent
-# https://www.docker.com/products/docker-desktop/
+```bash
+sudo apt update && sudo apt install -y \
+    docker.io docker-compose-plugin git curl openssl python3-pip
+
+sudo systemctl enable --now docker
+sudo usermod -aG docker $USER
+newgrp docker
+
+# Vérifier
 docker --version
 docker compose version
-
-# Vérifier Git
 git --version
 ```
 
-Ouvrir les mêmes ports pare-feu (même commande qu'au §2).
+Ouvrir les ports pare-feu :
+```bash
+sudo ufw allow 443/tcp
+sudo ufw allow 80/tcp
+sudo ufw allow 22000/tcp
+sudo ufw allow 22000/udp
+sudo ufw allow 8384/tcp
+sudo ufw reload
+```
 
 ### 3.2 Cloner et configurer
 
-```powershell
+```bash
+mkdir -p ~/PFE && cd ~/PFE
 git clone https://github.com/mpigajesse/sda-prototype.git
 cd sda-prototype
 
 # Générer les certificats TLS pour ce nœud
-bash scripts/generate-certs.sh   # via Git Bash ou WSL
+bash scripts/generate-certs.sh
 
 # Créer .env avec les mêmes clés que Node 1 (pour Parquet inter-nœuds)
-copy .env.example .env
-notepad .env
+cp .env.example .env
+nano .env
 ```
 
 > **Important** : copier exactement les mêmes valeurs `DB_ENCRYPTION_KEY` et
@@ -137,16 +152,17 @@ notepad .env
 
 ### 3.3 Démarrer le stack
 
-```powershell
+```bash
 docker compose --env-file .env up --build -d
-Start-Sleep -Seconds 30
+sleep 30
 docker compose ps
 ```
 
 ### 3.4 Vérification
 
-```powershell
+```bash
 curl -k https://localhost/health
+# Attendu : {"status":"operational",...}
 ```
 
 ---
@@ -204,7 +220,7 @@ curl -k https://localhost/health
 | Nœud | URL Syncthing GUI |
 |------|-------------------|
 | Node 1 — Win11 | `http://192.168.1.10:8384` |
-| Node 2 — Win10 | `http://192.168.1.20:8384` |
+| Node 2 — Ubuntu | `http://192.168.1.20:8384` |
 | Node 3 — Kali  | `http://192.168.1.30:8384` |
 
 ### 5.2 Récupérer les Device IDs (sur chaque nœud)
@@ -216,7 +232,7 @@ Dans chaque interface Syncthing :
 Noter les 3 IDs :
 ```
 Node 1 (Win11) : _______________________________________
-Node 2 (Win10) : _______________________________________
+Node 2 (Ubuntu) : _______________________________________
 Node 3 (Kali)  : _______________________________________
 ```
 
@@ -224,7 +240,7 @@ Node 3 (Kali)  : _______________________________________
 
 Sur **Node 1** — ajouter Node 2 ET Node 3 :
 1. **Ajouter un appareil distant**
-2. Coller Device ID de Node 2 → Nom : `SDA-Win10-VM` → Adresse : `tcp://192.168.1.20:22000` → Cocher `SDA_Shared` → Enregistrer
+2. Coller Device ID de Node 2 → Nom : `SDA-Ubuntu-VM` → Adresse : `tcp://192.168.1.20:22000` → Cocher `SDA_Shared` → Enregistrer
 3. Répéter pour Node 3 → `tcp://192.168.1.30:22000`
 
 Sur **Node 2** — accepter les connexions entrantes (notification Syncthing) et ajouter Node 3.
@@ -379,7 +395,7 @@ Accéder depuis n'importe quel navigateur sur le réseau LAN :
 
 ```
 https://192.168.1.10/docs    ← Node 1 Win11
-https://192.168.1.20/docs    ← Node 2 Win10
+https://192.168.1.20/docs    ← Node 2 Ubuntu
 https://192.168.1.30/docs    ← Node 3 Kali
 ```
 
@@ -397,7 +413,7 @@ Via Swagger : tester **Try it out** sur :
 
 ```
 https://192.168.1.10/    ← Dashboard Node 1
-https://192.168.1.20/    ← Dashboard Node 2
+https://192.168.1.20/    ← Dashboard Node 2 (Ubuntu)
 https://192.168.1.30/    ← Dashboard Node 3
 ```
 
@@ -441,7 +457,7 @@ Les données persistent dans `data/` (volumes montés — non supprimés par `do
 ```
 Infrastructure
 [ ] Node 1 Win11   : docker compose ps → tous healthy         ✓/✗
-[ ] Node 2 Win10   : docker compose ps → tous healthy         ✓/✗
+[ ] Node 2 Ubuntu  : docker compose ps → tous healthy         ✓/✗
 [ ] Node 3 Kali    : docker compose ps → tous healthy         ✓/✗
 [ ] Syncthing maillage : 3 nœuds "Connecté" dans GUI          ✓/✗
 

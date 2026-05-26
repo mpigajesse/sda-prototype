@@ -1,6 +1,6 @@
 # Guide de Déploiement — Nouveau Nœud SDA
 
-Ce guide permet de déployer un nœud SDA opérationnel sur **n'importe quelle machine** : VM Windows 10, VM Kali Linux, PC physique, ou serveur. Il est auto-suffisant — aucune connaissance du prototype existant n'est requise.
+Ce guide permet de déployer un nœud SDA opérationnel sur **n'importe quelle machine** : VM Ubuntu, VM Kali Linux, PC physique Windows, ou serveur. Il est auto-suffisant — aucune connaissance du prototype existant n'est requise.
 
 **Durée estimée :** 20–40 min selon la vitesse de téléchargement Docker.
 
@@ -14,7 +14,7 @@ Ce guide permet de déployer un nœud SDA opérationnel sur **n'importe quelle m
 | Disque | 10 Go libres | 20 Go |
 | CPU | 2 cœurs | 4 cœurs |
 | Réseau | LAN ou VPN avec Node 1 | LAN filaire 100 Mbit/s |
-| OS | Windows 10+ ou Linux (Debian/Ubuntu/Kali) | — |
+| OS | Linux (Ubuntu 24.04 / Kali / Debian) ou Windows 11 | — |
 
 > **Connectivité requise** : le nœud doit pouvoir joindre au moins un autre nœud SDA sur le port **22000/TCP+UDP** (Syncthing P2P). Sur un LAN domestique, ouvrir ce port dans le pare-feu suffit.
 
@@ -22,7 +22,7 @@ Ce guide permet de déployer un nœud SDA opérationnel sur **n'importe quelle m
 
 ## Étape 1 — Installer les dépendances
 
-=== "Windows 10 / Windows 11"
+=== "Windows 11"
 
     ### 1.1 Installer Docker Desktop
 
@@ -312,7 +312,7 @@ docker exec sda-backend curl -sk \
 
 Le frontend est servi en HTTPS avec mTLS — le navigateur doit présenter un certificat client signé par la CA interne SDA. Deux étapes : importer la CA de confiance, puis le certificat client.
 
-=== "Windows 10 / 11 — Chrome / Edge"
+=== "Windows 11 — Chrome / Edge"
 
     Ouvrir **PowerShell** :
     ```powershell
