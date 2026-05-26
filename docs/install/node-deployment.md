@@ -183,12 +183,13 @@ Vérifier que les certificats ont été créés :
 
 ```
 config/nginx/certs/
-├── ca.crt        ← Autorité de certification racine
-├── ca.key        ← Clé privée CA (ne pas diffuser)
-├── server.crt    ← Certificat serveur Nginx
-├── server.key    ← Clé privée serveur
-├── client.crt    ← Certificat client (pour tests mTLS)
-└── client.key    ← Clé privée client
+├── ca.crt          ← Autorité de certification racine (à importer dans le navigateur)
+├── ca.key          ← Clé privée CA (ne pas diffuser)
+├── server.crt      ← Certificat serveur Nginx (inclut SAN DNS:localhost)
+├── server.key      ← Clé privée serveur
+├── client.crt      ← Certificat client mTLS
+├── client.key      ← Clé privée client
+└── sda-client.p12  ← Bundle PKCS#12 pour import navigateur (mot de passe : sda2026)
 ```
 
 ---
@@ -307,14 +308,72 @@ docker exec sda-backend curl -sk \
     https://nginx/health
 ```
 
-### 6.4 Interface graphique
+### 6.4 Accéder au frontend via navigateur (mTLS)
 
-Ouvrir dans un navigateur :
+Le frontend est servi en HTTPS avec mTLS — le navigateur doit présenter un certificat client signé par la CA interne SDA. Deux étapes : importer la CA de confiance, puis le certificat client.
+
+=== "Windows 10 / 11 — Chrome / Edge"
+
+    Ouvrir **PowerShell** :
+    ```powershell
+    # 1. Importer la CA dans le magasin de confiance
+    certutil -addstore -user "Root" "config\nginx\certs\ca.crt"
+
+    # 2. Importer le certificat client
+    Import-PfxCertificate `
+      -FilePath "config\nginx\certs\sda-client.p12" `
+      -CertStoreLocation Cert:\CurrentUser\My `
+      -Password (ConvertTo-SecureString "sda2026" -AsPlainText -Force)
+    ```
+
+    Fermer et rouvrir Chrome/Edge. Naviguer vers `https://localhost/`.  
+    Chrome propose une sélection de certificat → choisir **`sda-client-node-1`** → OK.
+
+=== "Kali Linux / Debian — Firefox"
+
+    ```bash
+    # Générer le .p12 si pas encore fait (inclus dans generate-certs.sh)
+    openssl pkcs12 -export \
+      -out config/nginx/certs/sda-client.p12 \
+      -inkey config/nginx/certs/client.key \
+      -in config/nginx/certs/client.crt \
+      -certfile config/nginx/certs/ca.crt \
+      -passout pass:sda2026
+    ```
+
+    Dans **Firefox** :
+    1. `Paramètres` → `Vie privée et sécurité` → `Afficher les certificats`
+    2. Onglet **Autorités** → **Importer** → sélectionner `config/nginx/certs/ca.crt`  
+       → cocher ✅ *"Faire confiance pour les sites web"*
+    3. Onglet **Vos certificats** → **Importer** → sélectionner `sda-client.p12`  
+       → mot de passe : `sda2026`
+
+    Naviguer vers `https://localhost/` ou `https://192.168.200.1/` (depuis une autre VM).
+
+=== "Linux — Chrome / Chromium (NSS)"
+
+    ```bash
+    # Créer le NSS DB s'il n'existe pas
+    mkdir -p ~/.pki/nssdb
+    certutil -d sql:$HOME/.pki/nssdb -N --empty-password 2>/dev/null || true
+
+    # Importer la CA
+    certutil -d sql:$HOME/.pki/nssdb -A -t 'CT,,' \
+      -n SDA-Internal-CA -i config/nginx/certs/ca.crt
+
+    # Importer le certificat client
+    pk12util -d sql:$HOME/.pki/nssdb \
+      -i config/nginx/certs/sda-client.p12 -W sda2026
+    ```
+
+    Fermer et rouvrir Chrome. Naviguer vers `https://localhost/`.
+
+Résultat attendu : le frontend SDA s'affiche **sans avertissement de sécurité**.
 
 | Service | URL |
 |---------|-----|
-| Frontend SDA | `http://localhost:80` ou `https://localhost:443` |
-| API Swagger | `http://localhost:8000/docs` |
+| Frontend SDA (mTLS) | `https://localhost/` |
+| API Swagger | `https://localhost/docs` |
 | Syncthing GUI | `http://localhost:8384` |
 
 ---
@@ -503,7 +562,12 @@ newgrp docker
 
 ### Erreur de certificat dans le navigateur
 
-Le certificat est auto-signé → normal en développement. Cliquer **Avancé → Continuer** dans le navigateur, ou importer `config/nginx/certs/ca.crt` dans le magasin de certificats de confiance.
+| Erreur Chrome | Cause | Solution |
+|--------------|-------|---------|
+| `ERR_CERT_AUTHORITY_INVALID` | CA interne non reconnue | Importer `ca.crt` (voir Étape 6.4) |
+| `ERR_CERT_COMMON_NAME_INVALID` | Certificat sans SAN | Régénérer les certs : `bash scripts/generate-certs.sh` |
+| `ERR_BAD_SSL_CLIENT_AUTH_CERT` | Certificat client absent | Importer `sda-client.p12` (voir Étape 6.4) |
+| HTTP 400 "No required SSL certificate" | Chrome n'envoie pas le cert | Redémarrer Chrome complètement et réessayer |
 
 ---
 
@@ -518,7 +582,7 @@ Cocher chaque point avant de déclarer le nœud opérationnel :
 - [ ] Port 22000 ouvert dans le pare-feu
 - [ ] Nœud ajouté dans Syncthing des autres nœuds
 - [ ] Dossier `SDA_Shared` partagé et statut "À jour"
-- [ ] `https://localhost` accessible (message d'erreur cert auto-signé = normal)
+- [ ] `https://localhost` accessible sans avertissement (CA importée + cert client installé)
 
 ---
 
