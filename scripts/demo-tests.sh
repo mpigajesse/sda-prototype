@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# demo-tests.sh — Tests automatisés pour la démonstration jury SDA
+# demo-tests.sh — Tests automatisés pour la démonstration SDA
 # Usage : bash scripts/demo-tests.sh
 # Exécuter depuis la racine du projet sda-prototype/
 # Compatible : Git Bash (Windows), Bash (Linux/Kali)
@@ -78,7 +78,7 @@ fi
 header "TEST 2 — Ingestion de données"
 # =============================================================================
 
-NODE_LABEL="demo_jury"
+NODE_LABEL="demo_sda"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")
 
 echo ""
@@ -86,7 +86,7 @@ info "Test 2.1 — POST /api/v1/data/ingest via Docker exec"
 INGEST=$(docker compose exec "$BACKEND_SVC" \
     curl -s -X POST http://localhost:8000/api/v1/data/ingest \
     -H "Content-Type: application/json" \
-    -d "{\"tenant_id\": \"$NODE_LABEL\", \"data\": {\"test\": \"demo_jury\", \"ts\": \"$TIMESTAMP\", \"value\": 42}}" \
+    -d "{\"tenant_id\": \"$NODE_LABEL\", \"data\": {\"test\": \"demo_sda\", \"ts\": \"$TIMESTAMP\", \"value\": 42}}" \
     2>/dev/null || echo "ERROR")
 
 if echo "$INGEST" | grep -q '"status"'; then
@@ -346,7 +346,7 @@ echo -e "  ${BOLD}Total    : $TOTAL tests${NC}"
 echo ""
 
 if [ "$FAIL" -eq 0 ]; then
-    echo -e "  ${GREEN}${BOLD}🎉 Tous les tests passent — Cluster prêt pour la démo jury !${NC}"
+    echo -e "  ${GREEN}${BOLD}🎉 Tous les tests passent — Cluster SDA opérationnel !${NC}"
 else
     echo -e "  ${RED}${BOLD}⚠  $FAIL test(s) en échec — vérifier avant la démo${NC}"
 fi
