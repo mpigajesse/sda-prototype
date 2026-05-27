@@ -44,6 +44,7 @@ config/syncthing/config.xml.v0
 config/syncthing/*.pem
 config/syncthing/index-v2/
 config/syncthing/*.lock
+config/syncthing/support-bundle-*.zip
 !config/syncthing/.gitkeep
 
 # ---------------------------------------------------------------------------

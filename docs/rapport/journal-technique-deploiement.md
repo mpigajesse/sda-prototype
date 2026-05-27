@@ -462,58 +462,99 @@ tcp://192.168.200.1:22000
 
 ## 8. Résolution du conflit de synchronisation
 
-### 8.1 Description du conflit
+### 8.1 Contexte du conflit — Couplage Ubuntu ↔ Win11
 
-**Symptôme :** Dashboard Win11 affiche `⚠ 1 conflit` et `93% — 1 fichier en attente de synchronisation`. Côté Kali : `100% — 15 fichiers synchronisés`.
+Le conflit est apparu lors du premier couplage Syncthing entre Ubuntu (Node 2) et Win11 (Node 1), après que les 3 nœuds ont été reliés en maillage complet.
 
-**Identification via l'API Syncthing :**
-```bash
-docker compose exec syncthing sh -c \
-  'APIKEY=$(awk -F"[<>]" "/<apikey>/{print \$3; exit}" /var/syncthing/config/config.xml); \
-   wget -qO- --header="X-API-Key: $APIKEY" \
-   "http://localhost:8384/rest/db/need?folder=sda-shared"'
+**Symptôme :** Dashboard Win11 affiche `⚠ 1 conflit` — `93% — 1 fichier en attente de synchronisation`. Les nœuds Kali et Ubuntu affichent `100%`.
+
+**Identification — Vue détaillée Syncthing (GUI Win11, dossier SDA_Shared) :**
+
+```
+Éléments non synchronisés    1 élément(s), ~0 B
+Éléments en échec            1 élément(s)
+Dernier changement           .sync-conflict-20260526-153437-GHIJ
+```
+
+**Identification côté Ubuntu :**
+
+```
+Éléments non synchronisés — c217546e8f07 (Win11)
+  .gitkeep     0 B     2026-05-26 23:58:48     0cf005eea6cb
 ```
 
 **Fichier en conflit identifié :** `.gitkeep`
 
-**Cause :** `.gitkeep` est un fichier vide créé par git pour tracker le répertoire `data/shared_storage/` vide. Les deux nœuds ont généré des versions indépendantes avec des métadonnées différentes (timestamp, permissions Unix) avant la première synchronisation. Les **vecteurs d'horloge** Syncthing divergeaient — `VFTEXUZ:1779783197` (Kali) vs version Win11 — sans qu'aucun ne soit clairement "plus récent".
+### 8.2 Cause technique — Fichier placeholder git dans le volume Syncthing
 
-### 8.2 Fichier de conflit généré
+`.gitkeep` est un fichier vide (0 octet) conventionnellement placé dans les répertoires vides pour que git puisse les versionner (git ne tracke pas les dossiers vides). Il avait été ajouté dans `data/shared_storage/` pour préserver ce répertoire dans le dépôt.
 
+**Problème :** Ce fichier s'est retrouvé dans le **volume Syncthing** (`/var/syncthing/SDA_Shared/`), qui est distinct du répertoire git. Quand les nœuds ont été couplés :
+- Win11 avait `.gitkeep` avec son propre timestamp (`2026-05-26 15:36` UTC)
+- Ubuntu avait aussi `.gitkeep` créé à un moment différent (`2026-05-26 23:58`)
+- Les **vecteurs d'horloge** Syncthing divergeaient → Syncthing ne pouvait pas choisir un gagnant → conflit
+
+**Confirmation par `ls -la` dans le conteneur Syncthing Win11 :**
 ```
-data/shared_storage/.sync-conflict-20260526-153437-GHIJH3G.gitkeep
+-rwxrwxrwx 1 root root 0 May 26 15:36 .gitkeep     ← fichier parasite
+drwxr-xr-x 1 1000 1000 4096 May 26 08:20 .stfolder
 ```
-Le suffixe encode : `DATE-HEURE-DEVICEID_SOURCE.NOM_ORIGINAL`
 
-### 8.3 Résolution
+> **Note diagnostic :** Les commandes `find ... -name ".sync-conflict*"` et `find ... -name "*.sync-conflict*"` n'avaient trouvé aucun fichier physique — le conflit était enregistré dans l'**index interne Syncthing** (base SQLite locale), le fichier `.gitkeep` de Win11 étant le déclencheur, non une copie de conflit supplémentaire.
+
+### 8.3 Résolution — Suppression directe dans le volume Syncthing
 
 ```powershell
-# Supprimer le fichier de conflit et le .gitkeep local Win11
-Remove-Item -Force "data/shared_storage/.sync-conflict-*"
-Remove-Item -Force "data/shared_storage/.gitkeep"
+# Supprimer .gitkeep du volume Syncthing sur Win11
+docker exec sda-syncthing sh -c "rm -f /var/syncthing/SDA_Shared/.gitkeep && echo 'Supprimé'"
 ```
 
-Puis forcer un rescan Syncthing :
-```bash
-docker compose exec syncthing sh -c \
-  'APIKEY=...; wget -qO- --post-data="" --header="X-API-Key: $APIKEY" \
-   "http://localhost:8384/rest/db/scan?folder=sda-shared"'
+**Résultat immédiat (~15 s) :** Syncthing propage la suppression aux pairs. Les 3 nœuds passent à `100% — Synchronisé`.
+
+> **Important :** Cette commande utilise `docker exec` (avec le **nom du conteneur** `sda-syncthing`), et non `docker compose exec` qui utilise le **nom du service** (`syncthing`). L'image Syncthing utilise BusyBox — `find -ls` n'est pas supporté (remplacer par `-print` ou `-delete`).
+
+### 8.4 Prévention définitive — Fichier `.stignore`
+
+Pour éviter que ce type de conflit ne se reproduise (fichiers git ou temporaires parasites dans le volume Syncthing), un fichier `.stignore` a été créé :
+
+```powershell
+# Créé directement dans le volume Syncthing sur Win11
+docker exec sda-syncthing sh -c "printf '.gitkeep\n*.tmp\n*.part\n' > /var/syncthing/SDA_Shared/.stignore"
 ```
 
-Syncthing récupère la version Kali de `.gitkeep` et le conflit disparaît.
-
-**Vérification :**
-```json
-{ "errors": 0, "needFiles": 0, "inSyncFiles": 15, "globalFiles": 15, "state": "idle" }
+**Contenu du `.stignore` :**
+```
+.gitkeep
+*.tmp
+*.part
 ```
 
-### 8.4 Prévention — `.gitignore` mis à jour
+**Propriétés clés du `.stignore` :**
 
-```gitignore
-data/shared_storage/.stfolder/
-data/shared_storage/.sync-conflict-*
+| Propriété | Détail |
+|-----------|--------|
+| Emplacement | Racine du dossier partagé (`/var/syncthing/SDA_Shared/.stignore`) |
+| Auto-synchronisation | ✅ Syncthing réplique `.stignore` lui-même sur tous les pairs |
+| Portée | S'applique automatiquement à Win11, Ubuntu, Kali après sync |
+| Différence avec GUI | Les patterns GUI sont en base SQLite locale — `.stignore` est global au maillage |
+
+**Commit associé :**
 ```
-Ces fichiers Syncthing internes ne doivent pas apparaître dans git.
+17c7d35  chore: replace .gitkeep with .stignore in shared_storage
+```
+- Suppression de `data/shared_storage/.gitkeep` du dépôt git
+- Ajout de `data/shared_storage/.stignore` versionné
+
+### 8.5 Tableau de synthèse — Chronologie du conflit
+
+| Étape | Action | Résultat |
+|-------|--------|---------|
+| Couplage Ubuntu ↔ Win11 | Syncthing indexe les deux nœuds | `.gitkeep` détecté en conflit |
+| `find ... -name ".sync-conflict*"` | Recherche fichier conflit physique | Aucun trouvé — conflit en index interne |
+| `ls -la /var/syncthing/SDA_Shared/` | Inspection volume Syncthing Win11 | `.gitkeep` (0 B) identifié comme source |
+| `docker exec sda-syncthing rm .gitkeep` | Suppression depuis le conteneur | Propagation automatique → 100% |
+| Création `.stignore` | Protection permanente | `.gitkeep` ignoré sur les 3 nœuds |
+| `git commit 17c7d35` | Mise à jour dépôt | `.gitkeep` retiré, `.stignore` versionné |
 
 ---
 
@@ -683,13 +724,13 @@ formatMem(system.alloc)  // ex: "4 MB"
 | Indicateur | Valeur |
 |-----------|--------|
 | Backend | Opérationnel |
-| Pairs connectés | 1/1 |
+| Pairs connectés | **2/2** (Ubuntu + Kali) |
 | Syncthing version | v2.1.0 |
 | Plateforme | `Linux 6.6.114.1-microsoft-standard-WSL2 (x86_64)` |
 | Mémoire | ~4 MB (heap Syncthing) |
-| Sync SDA_Shared | 100% — 15 fichiers |
+| Sync SDA_Shared | **100% — 15 fichiers** ✅ |
 | Taille totale | 22.4 KB |
-| Type connexion | TCP direct LAN |
+| Type connexion | TCP direct LAN (192.168.200.x) |
 | Device ID | GHIJH3G-FFVIRSX-J5XXQNW-... |
 
 **Capture :** `[SCREENSHOT: win11_dashboard_final_100pct.png]`
@@ -702,9 +743,12 @@ formatMem(system.alloc)  // ex: "4 MB"
 | Conteneurs | 4/4 healthy |
 | Dashboard | Accessible via `https://localhost/` |
 | Syncthing GUI | `http://localhost:8384` |
+| Syncthing version | v2.1.0 |
+| Device ID | G43Q6SJ-N65TTP5-BEESX7I-... |
 | Syncthing API (dashboard) | ✅ Opérationnel (après setup-syncthing-key.sh) |
 | Interface LAN | `ens37` — `192.168.200.130` |
-| Couplage P2P | ⏳ À finaliser avec Node 1 et Node 3 |
+| Pairs connectés | **2/2** (Win11 + Kali) ✅ |
+| Sync SDA_Shared | **100% — 15 fichiers** ✅ |
 
 **Capture :** `[SCREENSHOT: ubuntu_dashboard_operational.png]`
 
