@@ -47,9 +47,9 @@
 
 | Nœud | OS | Type | IP LAN | Statut |
 |------|----|------|--------|--------|
-| Node 1 | Windows 11 | PC physique | `192.168.1.10` | ✅ Déjà prêt |
-| Node 2 | Ubuntu 26.04 LTS | VM | LAN: `192.168.200.130` / WAN: `192.168.1.40` | 🔄 En cours |
-| Node 3 | Kali Linux | VM | `192.168.1.30` | À déployer |
+| Node 1 | Windows 11 | PC physique | LAN: `192.168.200.1` / WAN: `192.168.1.x` | ✅ Opérationnel |
+| Node 2 | Ubuntu 26.04 LTS "resolute" | VM | LAN: `192.168.200.130` / WAN: `192.168.1.40` | ✅ Opérationnel |
+| Node 3 | Kali Linux | VM | LAN: `192.168.200.128` / WAN: `192.168.1.20` | ✅ Opérationnel |
 
 > Trouver ton IP sur Windows 11 : `ipconfig` → "Adresse IPv4"
 > Trouver ton IP sur Ubuntu/Kali : `ip a show eth0` ou `ip a show ens33`
@@ -101,24 +101,39 @@ New-NetFirewallRule -DisplayName "SDA-SyncGUI"    -Direction Inbound -Protocol T
 
 ---
 
-## 3. Node 2 — VM Ubuntu 24.04 LTS
+## 3. Node 2 — VM Ubuntu 26.04 LTS "resolute"
 
-> **Identifiants VM** : user `ubuntu` / mot de passe `ubuntu` — `sudo su -` pour root.
+> **Identifiants VM** : user `ubuntu` / mot de passe `ubuntu` — `sudo su -` pour root.  
+> **IP LAN VMnet1 :** `192.168.200.130` | **IP WAN :** `192.168.1.40`
 
-### 3.1 Prérequis
+### 3.1 Prérequis (spécificités Ubuntu 26.04)
+
+> Ubuntu 26.04 ne distribue pas `docker-compose-plugin` dans ses dépôts par défaut.
+> Le dépôt officiel Docker doit être ajouté manuellement.
 
 ```bash
-sudo apt update && sudo apt install -y \
-    docker.io docker-compose-plugin git curl openssl python3-pip
+# Paquets de base
+sudo apt update && sudo apt install -y docker.io git curl openssl python3-pip
 
-sudo systemctl enable --now docker
+# Ajouter le dépôt officiel Docker (requis pour docker-compose-plugin)
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
+    sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+    https://download.docker.com/linux/ubuntu \
+    $(. /etc/os-release && echo $VERSION_CODENAME) stable" | \
+    sudo tee /etc/apt/sources.list.d/docker.list
+sudo apt update && sudo apt install -y docker-compose-plugin
+
+# Ajouter l'utilisateur au groupe docker
 sudo usermod -aG docker $USER
+# newgrp absent par défaut sur Ubuntu 26.04 — installer util-linux-extra
+sudo apt install -y util-linux-extra
 newgrp docker
 
 # Vérifier
-docker --version
-docker compose version
-git --version
+docker --version        # Docker version 29.1.3
+docker compose version  # Docker Compose version v5.1.4
 ```
 
 Ouvrir les ports pare-feu :
@@ -134,35 +149,45 @@ sudo ufw reload
 ### 3.2 Cloner et configurer
 
 ```bash
-mkdir -p ~/PFE && cd ~/PFE
+mkdir -p ~/Desktop/PFE && cd ~/Desktop/PFE
 git clone https://github.com/mpigajesse/sda-prototype.git
 cd sda-prototype
 
 # Générer les certificats TLS pour ce nœud
 bash scripts/generate-certs.sh
 
-# Créer .env avec les mêmes clés que Node 1 (pour Parquet inter-nœuds)
-cp .env.example .env
-nano .env
+# Créer .env avec les mêmes clés que Node 1 (OBLIGATOIRE pour Parquet inter-nœuds)
+cat > .env <<'EOF'
+DB_ENCRYPTION_KEY=4a82d9f9199d1159159b55ef7359bc1c035d5587024e3ed15edb4f8f4b30bfb9
+PARQUET_FERNET_KEY=PGKzI2PL8qrYh_IFs98fAguugjtpcOOzv4P05NbQ1lk=
+EOF
 ```
 
-> **Important** : copier exactement les mêmes valeurs `DB_ENCRYPTION_KEY` et
-> `PARQUET_FERNET_KEY` que sur Node 1 — sinon les Parquets chiffrés
-> ne seront pas lisibles entre nœuds.
+> **Important** : les clés doivent être **identiques** à Node 1 — sinon les Parquets chiffrés ne seront pas lisibles entre nœuds.
 
 ### 3.3 Démarrer le stack
 
 ```bash
-docker compose --env-file .env up --build -d
+docker compose up --build -d
 sleep 30
 docker compose ps
 ```
 
-### 3.4 Vérification
+### 3.4 Injection clé API Syncthing
+
+```bash
+bash scripts/setup-syncthing-key.sh
+# → extrait la clé de sda-syncthing + recharge nginx à chaud
+```
+
+### 3.5 Vérification
 
 ```bash
 curl -k https://localhost/health
 # Attendu : {"status":"operational",...}
+
+# Dashboard accessible depuis n'importe quelle machine du LAN :
+# https://192.168.200.130/
 ```
 
 ---
@@ -217,11 +242,11 @@ curl -k https://localhost/health
 
 ### 5.1 Accéder aux interfaces Syncthing
 
-| Nœud | URL Syncthing GUI |
-|------|-------------------|
-| Node 1 — Win11 | `http://192.168.1.10:8384` |
-| Node 2 — Ubuntu | `http://192.168.1.20:8384` |
-| Node 3 — Kali  | `http://192.168.1.30:8384` |
+| Nœud | URL Syncthing GUI (accès local) |
+|------|--------------------------------|
+| Node 1 — Win11 | `http://localhost:8384` |
+| Node 2 — Ubuntu | `http://localhost:8384` (depuis la VM) |
+| Node 3 — Kali  | `http://localhost:8384` (depuis la VM) |
 
 ### 5.2 Récupérer les Device IDs (sur chaque nœud)
 
@@ -240,8 +265,8 @@ Node 3 (Kali)  : _______________________________________
 
 Sur **Node 1** — ajouter Node 2 ET Node 3 :
 1. **Ajouter un appareil distant**
-2. Coller Device ID de Node 2 → Nom : `SDA-Ubuntu-VM` → Adresse : `tcp://192.168.1.20:22000` → Cocher `SDA_Shared` → Enregistrer
-3. Répéter pour Node 3 → `tcp://192.168.1.30:22000`
+2. Coller Device ID de Node 2 → Nom : `Node2-Ubuntu` → Adresse : `tcp://192.168.200.130:22000` → Cocher `SDA_Shared` → Enregistrer
+3. Répéter pour Node 3 → Nom : `Node3-Kali` → Adresse : `tcp://192.168.200.128:22000`
 
 Sur **Node 2** — accepter les connexions entrantes (notification Syncthing) et ajouter Node 3.
 
@@ -394,9 +419,10 @@ Vérifier que :
 Accéder depuis n'importe quel navigateur sur le réseau LAN :
 
 ```
-https://192.168.1.10/docs    ← Node 1 Win11
-https://192.168.1.20/docs    ← Node 2 Ubuntu
-https://192.168.1.30/docs    ← Node 3 Kali
+https://localhost/docs           ← Nœud local (depuis la machine elle-même)
+https://192.168.200.1/docs       ← Node 1 Win11 (depuis le LAN VMnet1)
+https://192.168.200.130/docs     ← Node 2 Ubuntu (depuis le LAN VMnet1)
+https://192.168.200.128/docs     ← Node 3 Kali (depuis le LAN VMnet1)
 ```
 
 > Accepter l'alerte SSL (certificat auto-signé) ou importer `ca.crt`
@@ -412,9 +438,9 @@ Via Swagger : tester **Try it out** sur :
 ## 8. Frontend React (Dashboard)
 
 ```
-https://192.168.1.10/    ← Dashboard Node 1
-https://192.168.1.20/    ← Dashboard Node 2 (Ubuntu)
-https://192.168.1.30/    ← Dashboard Node 3
+https://192.168.200.1/      ← Dashboard Node 1 (Win11)
+https://192.168.200.130/    ← Dashboard Node 2 (Ubuntu)
+https://192.168.200.128/    ← Dashboard Node 3 (Kali)
 ```
 
 ---
@@ -423,15 +449,15 @@ https://192.168.1.30/    ← Dashboard Node 3
 
 ```bash
 # Depuis Node 3 (Kali) — tester TLS 1.2 refusé
-openssl s_client -connect 192.168.1.10:443 -tls1_2 2>&1 | grep -E "handshake|error"
+openssl s_client -connect 192.168.200.1:443 -tls1_2 2>&1 | grep -E "handshake|error"
 # Attendu : handshake failure ✅ (TLS 1.2 rejeté)
 
 # TLS 1.3 accepté
-openssl s_client -connect 192.168.1.10:443 -tls1_3 2>&1 | grep "Protocol"
+openssl s_client -connect 192.168.200.1:443 -tls1_3 2>&1 | grep "Protocol"
 # Attendu : Protocol : TLSv1.3 ✅
 
 # mTLS — requête sans certificat client rejetée
-curl -k https://192.168.1.10/api/v1/data/ingest -X POST -H "Content-Type: application/json" -d '{}'
+curl -k https://192.168.200.1/api/v1/data/ingest -X POST -H "Content-Type: application/json" -d '{}'
 # Attendu : 400 No required SSL certificate was sent ✅
 ```
 
@@ -456,10 +482,12 @@ Les données persistent dans `data/` (volumes montés — non supprimés par `do
 
 ```
 Infrastructure
-[ ] Node 1 Win11   : docker compose ps → tous healthy         ✓/✗
-[ ] Node 2 Ubuntu  : docker compose ps → tous healthy         ✓/✗
-[ ] Node 3 Kali    : docker compose ps → tous healthy         ✓/✗
-[ ] Syncthing maillage : 3 nœuds "Connecté" dans GUI          ✓/✗
+[ ] Node 1 Win11   : docker compose ps → tous healthy         ✓/✗  ← ✅ validé
+[ ] Node 2 Ubuntu  : docker compose ps → tous healthy         ✓/✗  ← ✅ validé
+[ ] Node 3 Kali    : docker compose ps → tous healthy         ✓/✗  ← ✅ validé
+[ ] setup-syncthing-key.sh lancé sur chaque nœud              ✓/✗  ← ✅ validé
+[ ] Dashboard Syncthing — métriques visibles (pas d'erreur)   ✓/✗  ← ✅ validé
+[ ] Syncthing maillage : 3 nœuds "Connecté" dans GUI          ✓/✗  ← ⏳ à faire
 
 Fonctionnel
 [ ] Ingest Node 1 → succès (status:success)                   ✓/✗
@@ -488,6 +516,9 @@ Interface
 | Symptôme | Cause | Solution |
 |----------|-------|----------|
 | VM ne joint pas Node 1 | Pare-feu Win11 | Exécuter les règles PowerShell du §2 |
+| "Impossible de joindre Syncthing" | clé API manquante dans nginx | `bash scripts/setup-syncthing-key.sh` |
+| `docker-compose-plugin not found` sur Ubuntu | Dépôt Docker absent | Ajouter le dépôt officiel Docker (§3.1) |
+| `newgrp: not found` sur Ubuntu | `util-linux-extra` absent | `sudo apt install util-linux-extra` |
 | `502 Bad Gateway` sur `/` | Frontend non démarré | `docker compose logs sda-frontend` |
 | `400 No required SSL` | mTLS actif — normal | Fournir `--cert` et `--key` |
 | Syncthing ne se connecte pas | Port 22000 bloqué | Vérifier pare-feu sur les 2 nœuds |

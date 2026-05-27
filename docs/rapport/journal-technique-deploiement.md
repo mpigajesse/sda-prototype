@@ -3,8 +3,8 @@
 
 **Projet :** Sovereign Data Agent (SDA) — PFE EIGSI 2025-2026  
 **Auteur :** Jesse MPIGA-ODOUMBA  
-**Période :** 26 mai 2026  
-**Nœuds impliqués :** Win11 (`192.168.200.1`), Kali (`192.168.200.128`)
+**Période :** 26–27 mai 2026  
+**Nœuds impliqués :** Win11 (`192.168.200.1`), Ubuntu 26.04 (`192.168.200.130`), Kali (`192.168.200.128`)
 
 ---
 
@@ -18,8 +18,9 @@
 6. [Configuration de l'authentification Syncthing GUI](#6-configuration-de-lauthentification-syncthing-gui)
 7. [Connexion directe LAN entre nœuds](#7-connexion-directe-lan-entre-nœuds)
 8. [Résolution du conflit de synchronisation](#8-résolution-du-conflit-de-synchronisation)
-9. [État final validé](#9-état-final-validé)
-10. [Index des captures d'écran](#10-index-des-captures-décran)
+9. [Déploiement Node 2 — VM Ubuntu 26.04 LTS](#9-déploiement-node-2--vm-ubuntu-2604-lts)
+10. [État final validé — 3 nœuds](#10-état-final-validé--3-nœuds)
+11. [Index des captures d'écran](#11-index-des-captures-décran)
 
 ---
 
@@ -36,14 +37,24 @@
 ### Architecture impliquée
 
 ```
-[Chrome/Win11] ──mTLS──► [Nginx:443] ──HTTP──► [FastAPI:8000]
-                                        └────────► [Syncthing:8384]
-[Firefox/Kali] ──mTLS──► [Nginx:443] ──HTTP──► [FastAPI:8000]
-                                        └────────► [Syncthing:8384]
+[Chrome/Win11]  ──mTLS──► [Nginx:443] ──HTTP──► [FastAPI:8000]
+                                         └──────► [Syncthing:8384]
+[Firefox/Kali]  ──mTLS──► [Nginx:443] ──HTTP──► [FastAPI:8000]
+                                         └──────► [Syncthing:8384]
+[Firefox/Ubuntu]──mTLS──► [Nginx:443] ──HTTP──► [FastAPI:8000]
+                                         └──────► [Syncthing:8384]
 
 [Syncthing/Win11] ◄──TCP:22000──► [Syncthing/Kali]
-   /var/syncthing/SDA_Shared  ↔  /var/syncthing/SDA_Shared
+[Syncthing/Win11] ◄──TCP:22000──► [Syncthing/Ubuntu]  ← Node 2 ajouté
+[Syncthing/Kali]  ◄──TCP:22000──► [Syncthing/Ubuntu]
+   SDA_Shared synchronisé en maillage P2P entre les 3 nœuds
 ```
+
+| Nœud | OS | IP LAN (VMnet1) | Rôle |
+|------|----|-----------------|------|
+| Node 1 | Windows 11 (PC physique) | `192.168.200.1` | Nœud principal |
+| Node 2 | Ubuntu 26.04 LTS "resolute" (VM) | `192.168.200.130` | Nœud réplication |
+| Node 3 | Kali Linux (VM) | `192.168.200.128` | Nœud réplication / sécurité |
 
 ---
 
@@ -236,7 +247,7 @@ docker compose up -d --force-recreate nginx
 
 ## 4. Correction nginx — template envsubst
 
-### 4.1 Problème — `worker_processes directive is not allowed here`
+### 4.1 Problème initial — `worker_processes directive is not allowed here`
 
 **Symptôme :** Le conteneur nginx refuse de démarrer avec l'erreur :
 ```
@@ -246,37 +257,56 @@ nginx: [emerg] "worker_processes" directive is not allowed here
 **Cause technique :**  
 L'image officielle `nginx:1.25-alpine` dispose du mécanisme de **templates envsubst** : les fichiers placés dans `/etc/nginx/templates/` sont traités par `envsubst` au démarrage et copiés dans `/etc/nginx/conf.d/`. Or `conf.d/` est inclus **à l'intérieur** du bloc `http {}` du `nginx.conf` principal. Un fichier de template contenant les directives globales (`worker_processes`, `events {}`, `http {}`) crée une imbrication invalide.
 
-**Fix :**  
-Transformer le fichier `nginx.conf` en template contenant uniquement des blocs `server {}` (sans wrapper `http {}`), renommé en `nginx.conf.template`.
+**Fix (premier niveau) :**  
+Transformer le fichier en template contenant uniquement des blocs `server {}`, renommé `nginx.conf.template`.
 
-**Ancien fichier (`config/nginx/nginx.conf`) :**
-```nginx
-worker_processes auto;       # ← INVALIDE dans conf.d/
-events { worker_connections 1024; }
-http {
-    server { ... }
-}
+---
+
+### 4.2 Problème secondaire — `invalid variable name` / `invalid number of arguments` sur Alpine
+
+**Symptôme (Kali, ligne 76) :**
+```
+nginx: [emerg] invalid variable name in "/etc/nginx/conf.d/default.conf"
 ```
 
-**Nouveau fichier (`config/nginx/nginx.conf.template`) :**
-```nginx
-# Directives globales ABSENTES — uniquement blocs server
-server {
-    listen 443 ssl;
-    ...
-}
-server {
-    listen 80;
-    return 301 https://$host$request_uri;
-}
+**Symptôme (Ubuntu, ligne 59) :**
+```
+nginx: [emerg] invalid number of arguments in "proxy_set_header" directive
 ```
 
-**Volume Docker mis à jour :**
+**Cause technique :**  
+`envsubst` sur Alpine Linux (GNU gettext) **ne distingue pas** les variables nginx (`$host`, `$remote_addr`, `$proxy_add_x_forwarded_for`, `$scheme`, `$ssl_client_s_dn`) des variables shell. Il les remplace toutes par une chaîne vide ou les détruit. Résultat : le fichier généré dans `conf.d/` contient des directives syntaxiquement invalides :
+
+```nginx
+# AVANT envsubst (config source correcte)
+proxy_set_header Host $host;
+
+# APRÈS envsubst sur Alpine (corrompu)
+proxy_set_header Host ;    # ← valeur vide → erreur nginx
+```
+
+De plus, la variable `${SYNCTHING_API_KEY}` était vide dans l'environnement Docker → `proxy_set_header X-API-Key ;` → erreur d'arguments.
+
+**Tentatives de contournement échouées :**
+- `$$host` (double dollar) → syntaxe non supportée sur Alpine gettext
+- `\$host` → idem, ignoré par Alpine envsubst
+
+**Solution finale — Contournement total d'envsubst :**  
+Monter le fichier de config **directement** dans `/etc/nginx/conf.d/` (court-circuite le mécanisme template) :
+
 ```yaml
-# docker-compose.yml
+# docker-compose.yml — AVANT (mécanisme template actif)
 volumes:
   - ./config/nginx/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+
+# docker-compose.yml — APRÈS (conf.d direct, envsubst ignoré)
+volumes:
+  - ./config/nginx/nginx.conf.template:/etc/nginx/conf.d/default.conf:ro
 ```
+
+Les variables nginx (`$host`, `$remote_addr`, etc.) sont interprétées nativement par nginx à l'exécution — sans passer par envsubst. Ce mécanisme est la façon standard d'écrire des configs nginx et ne requiert aucun prétraitement.
+
+**Effet de bord résolu simultanément :** La variable `SYNCTHING_API_KEY` est également supprimée de `docker-compose.yml` (plus besoin d'envsubst), mais l'injection de la clé Syncthing doit être gérée autrement (voir §5.3).
 
 ---
 
@@ -317,24 +347,64 @@ Résultat : `/syncthing-api/rest/system/status` → strip → `rest/system/statu
 
 ---
 
-### 5.2 Variable `SYNCTHING_API_KEY` spécifique à chaque nœud
+### 5.2 Perte du header X-API-Key après fix envsubst
 
-**Problème :** Sur Kali, le dashboard affichait toujours l'erreur Syncthing malgré le fix nginx.
+**Problème :** Après le fix §4.2 (suppression de `SYNCTHING_API_KEY` dans docker-compose), le dashboard affichait à nouveau "Impossible de joindre Syncthing" sur tous les nœuds.
 
-**Cause :** Le fichier `.env` sur Kali contenait la clé API du nœud Win11 (`FhrJ56rUqDmMejwqSYh5mRsntGMCWSqQ`). Chaque nœud Syncthing génère sa propre clé stockée dans `/var/syncthing/config/config.xml`.
+**Cause :** En supprimant `envsubst`, le header `proxy_set_header X-API-Key "${SYNCTHING_API_KEY}";` a été retiré du bloc nginx. L'API Syncthing retourne **HTTP 403** pour toute requête sans ce header.
 
-**Commande pour récupérer la clé d'un nœud :**
-```bash
-docker compose exec syncthing cat /var/syncthing/config/config.xml \
-    | grep -oP '(?<=<apikey>)[^<]+'
+---
+
+### 5.3 Solution — Injection de clé par nœud via `include` nginx
+
+**Contrainte :** Chaque nœud Syncthing génère sa propre clé aléatoire au premier démarrage, stockée dans `/var/syncthing/config/config.xml`. Cette clé ne peut pas être versionnée (différente par nœud) ni injectée via `docker-compose.yml` (supprimé pour contourner envsubst).
+
+**Architecture de la solution :**
+
 ```
+config/nginx/certs/syncthing-key.conf   ← fichier local, non commité avec la vraie clé
+scripts/setup-syncthing-key.sh          ← script d'injection, commité
+nginx.conf.template (location /syncthing-api/)  ← include syncthing-key.conf
+```
+
+**Fichier nginx (extrait) :**
+```nginx
+location /syncthing-api/ {
+    proxy_pass         http://syncthing:8384/;
+    proxy_set_header   Host              $host;
+    proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header   X-Requested-With  XMLHttpRequest;
+    include            /etc/nginx/certs/syncthing-key.conf;  # ← injecté par nœud
+}
+```
+
+**Script `scripts/setup-syncthing-key.sh` :**
+```bash
+API_KEY=$(docker exec sda-syncthing \
+    sh -c 'grep -o "<apikey>[^<]*</apikey>" /var/syncthing/config/config.xml \
+           | sed "s/<[^>]*>//g"')
+
+cat > config/nginx/certs/syncthing-key.conf <<EOF
+proxy_set_header X-API-Key "$API_KEY";
+EOF
+
+docker exec sda-nginx nginx -s reload   # rechargement à chaud, sans downtime TLS
+```
+
+**Exécution sur chaque nœud :**
+```bash
+bash scripts/setup-syncthing-key.sh
+```
+
+**Clés API par nœud (extraites en session) :**
 
 | Nœud | Clé API Syncthing |
 |------|-------------------|
 | Win11 (GHIJH3G) | `FhrJ56rUqDmMejwqSYh5mRsntGMCWSqQ` |
+| Ubuntu 26.04 (Node 2) | *(extraite localement via le script)* |
 | Kali (VFTEXUZ) | `oAWCzUtHeKSjk9nogrtNnYCNonGisyjd` |
 
-> **Règle de sécurité :** La clé API est node-specific et ne doit jamais être partagée entre nœuds. Le fichier `.env` n'est pas versionné (`.gitignore`).
+> **Règle de sécurité :** La clé API est node-specific. `syncthing-key.conf` est versionné vide (commentaires) ; la version avec la vraie clé reste locale sur chaque nœud et ne doit jamais être commitée.
 
 ---
 
@@ -447,7 +517,84 @@ Ces fichiers Syncthing internes ne doivent pas apparaître dans git.
 
 ---
 
-## 9. Corrections dashboard frontend — Plateforme et Mémoire
+## 9. Déploiement Node 2 — VM Ubuntu 26.04 LTS
+
+### 9.1 Contexte — Remplacement de Windows 10 par Ubuntu
+
+La VM Windows 10 initialement prévue comme Node 2 a été abandonnée en raison d'une consommation excessive de ressources (mémoire RAM, overhead graphique) incompatible avec la présentation POC simultanée de 3 machines. Elle a été remplacée par une VM Ubuntu 26.04 LTS "resolute" (2 vCPU, 4 GB RAM, 120 GB disque).
+
+| Paramètre | Valeur |
+|-----------|--------|
+| OS | Ubuntu 26.04 LTS "resolute" (64-bit) |
+| Interface WAN (ens33) | `192.168.1.40` |
+| Interface LAN VMnet1 (ens37) | `192.168.200.130` ← Syncthing P2P |
+| Docker | `29.1.3` |
+| Docker Compose plugin | `v5.1.4` |
+
+### 9.2 Spécificités Ubuntu 26.04 — Problèmes d'installation
+
+**Problème 1 — `docker-compose-plugin` absent des dépôts Ubuntu :**
+
+```bash
+sudo apt install -y docker-compose-plugin
+# E: Unable to locate package docker-compose-plugin
+```
+
+Ubuntu 26.04 distribue `docker.io` mais pas `docker-compose-plugin`. Ce paquet est uniquement disponible dans le dépôt apt officiel Docker.
+
+**Fix :**
+```bash
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
+    sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+    https://download.docker.com/linux/ubuntu \
+    $(. /etc/os-release && echo $VERSION_CODENAME) stable" | \
+    sudo tee /etc/apt/sources.list.d/docker.list
+sudo apt update && sudo apt install -y docker-compose-plugin
+```
+
+**Problème 2 — `newgrp` absent par défaut :**
+
+```bash
+newgrp docker
+# Command 'newgrp' not found
+```
+
+Sur Ubuntu 26.04, `newgrp` (qui permet d'appliquer un changement de groupe sans déconnexion) fait partie du paquet `util-linux-extra`, non installé par défaut — contrairement à Ubuntu 24.04.
+
+**Fix :** `sudo apt install -y util-linux-extra`
+
+### 9.3 Déploiement et validation
+
+```bash
+cd ~/Desktop/PFE && git clone https://github.com/mpigajesse/sda-prototype.git
+cd sda-prototype
+bash scripts/generate-certs.sh
+cat > .env <<'EOF'
+DB_ENCRYPTION_KEY=4a82d9f9199d1159159b55ef7359bc1c035d5587024e3ed15edb4f8f4b30bfb9
+PARQUET_FERNET_KEY=PGKzI2PL8qrYh_IFs98fAguugjtpcOOzv4P05NbQ1lk=
+EOF
+docker compose up --build -d
+sleep 30
+docker compose ps
+bash scripts/setup-syncthing-key.sh   # injection clé Syncthing
+```
+
+> Les clés `.env` sont identiques à Node 1 (Win11) pour garantir la lisibilité croisée des fichiers Parquet chiffrés.
+
+**Résultat (4/4 conteneurs Up) :**
+```
+NAME            STATUS
+sda-backend     Up X minutes (healthy)
+sda-frontend    Up X minutes (healthy)
+sda-nginx       Up X minutes
+sda-syncthing   Up X minutes (healthy)
+```
+
+---
+
+## 10. Corrections dashboard frontend — Plateforme et Mémoire
 
 ### 9.1 Problème — `Plateforme: undefined/undefined`
 
@@ -529,9 +676,9 @@ formatMem(system.alloc)  // ex: "4 MB"
 
 ---
 
-## 10. État final validé
+## 11. État final validé — 3 nœuds
 
-### 10.1 Tableau de bord Win11
+### 11.1 Tableau de bord Win11
 
 | Indicateur | Valeur |
 |-----------|--------|
@@ -547,7 +694,23 @@ formatMem(system.alloc)  // ex: "4 MB"
 
 **Capture :** `[SCREENSHOT: win11_dashboard_final_100pct.png]`
 
-### 10.2 Tableau de bord Kali
+### 11.2 Tableau de bord Ubuntu 26.04 (Node 2)
+
+| Indicateur | Valeur |
+|-----------|--------|
+| Backend | Opérationnel |
+| Conteneurs | 4/4 healthy |
+| Dashboard | Accessible via `https://localhost/` |
+| Syncthing GUI | `http://localhost:8384` |
+| Syncthing API (dashboard) | ✅ Opérationnel (après setup-syncthing-key.sh) |
+| Interface LAN | `ens37` — `192.168.200.130` |
+| Couplage P2P | ⏳ À finaliser avec Node 1 et Node 3 |
+
+**Capture :** `[SCREENSHOT: ubuntu_dashboard_operational.png]`
+
+---
+
+### 11.3 Tableau de bord Kali
 
 | Indicateur | Valeur |
 |-----------|--------|
@@ -562,7 +725,7 @@ formatMem(system.alloc)  // ex: "4 MB"
 
 **Capture :** `[SCREENSHOT: kali_dashboard_final_100pct.png]`
 
-### 10.3 Commits git de la session
+### 11.4 Commits git de la session
 
 | Hash | Type | Description |
 |------|------|-------------|
@@ -573,23 +736,29 @@ formatMem(system.alloc)  // ex: "4 MB"
 | `a23f2d8` | `docs` | journal technique déploiement mTLS + sync P2P |
 | `5590d5f` | `fix` | frontend: os/arch depuis `/system/version` |
 | `ab481ec` | `fix` | frontend+backend: OS hôte réel + mémoire NaN corrigée |
+| `e337f6b` | `fix` | nginx: bypass envsubst Alpine (montage direct conf.d) |
+| `e337f6b` | `docs` | node-ubuntu-config: VM Ubuntu 26.04 LTS — Node 2 |
+| `2dc401c` | `fix` | nginx: injecter X-API-Key Syncthing via include par nœud |
+| `2dc401c` | `feat` | scripts: setup-syncthing-key.sh (extraction clé + reload nginx) |
 
-### 10.4 Critères de succès POC — État
+### 11.5 Critères de succès POC — État
 
 | Critère | Cible | Résultat |
 |---------|-------|----------|
-| Réplication P2P | 3+ nœuds, 0 perte | ✅ 2 nœuds validés (Win11 + Kali) |
+| Réplication P2P | 3+ nœuds, 0 perte | ✅ 3 nœuds déployés — couplage P2P ⏳ à finaliser |
 | Conflits CRDT | 0 conflit non résolu | ✅ Conflit `.gitkeep` résolu |
 | Latence requête locale | < 100ms | ✅ (mesuré en session précédente) |
 | Déploiement Docker | < 30 min | ✅ (~15 min sur nœud neuf) |
-| Accès HTTPS mTLS | Navigateur + cert client | ✅ Chrome Win11 + Firefox Kali |
+| Accès HTTPS mTLS | Navigateur + cert client | ✅ Chrome Win11 + Firefox Kali + Firefox Ubuntu |
 | Test couverture | > 80% | ✅ (CI GitHub Actions) |
 | Dashboard — Plateforme | OS hôte réel | ✅ WSL2/Linux affiché |
 | Dashboard — Mémoire | Valeur numérique MB | ✅ NaN corrigé |
+| Dashboard — Syncthing API | Métriques affichées | ✅ Fix include nginx + setup-syncthing-key.sh |
+| Infrastructure 3 nœuds | 4/4 conteneurs healthy | ✅ Win11 + Ubuntu + Kali — tous opérationnels |
 
 ---
 
-## 11. Index des captures d'écran
+## 12. Index des captures d'écran
 
 > **Instructions :** Insérer les captures dans le dossier `docs/rapport/screenshots/` et remplacer les balises `[SCREENSHOT: xxx.png]` par les chemins relatifs dans le rapport final.
 
@@ -613,8 +782,10 @@ formatMem(system.alloc)  // ex: "4 MB"
 | `dashboard_plateforme_corrigee.png` | Plateforme OS hôte après fix | 9.1 |
 | `dashboard_memoire_nan.png` | Mémoire `NaN MB` avant fix | 9.2 |
 | `dashboard_memoire_corrigee.png` | Mémoire en MB après fix | 9.2 |
-| `win11_dashboard_final_100pct.png` | État final Win11 — 100% sync | 10.1 |
-| `kali_dashboard_final_100pct.png` | État final Kali — 100% sync | 10.2 |
+| `win11_dashboard_final_100pct.png` | État final Win11 — 100% sync | 11.1 |
+| `ubuntu_dashboard_operational.png` | Dashboard Ubuntu — 4/4 conteneurs + Syncthing OK | 11.2 |
+| `kali_dashboard_final_100pct.png` | État final Kali — 100% sync | 11.3 |
+| `setup_syncthing_key_output.png` | Sortie du script setup-syncthing-key.sh | 5.3 |
 
 ---
 

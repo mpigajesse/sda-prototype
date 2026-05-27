@@ -107,7 +107,19 @@ source scripts/sda-aliases.sh
 echo 'source ~/PFE/sda-prototype/scripts/sda-aliases.sh' >> ~/.zshrc
 ```
 
-### 6. Validation finale
+### 6. Injection de la clé API Syncthing dans nginx
+
+> **Contexte :** Même procédure que sur tous les nœuds — la clé API Syncthing est node-specific et doit être injectée localement dans nginx.
+
+```bash
+bash scripts/setup-syncthing-key.sh
+```
+
+**Vérification :** accéder à `https://localhost/` → le bloc Syncthing du dashboard doit afficher les métriques (uptime, mémoire, pairs) sans l'erreur "Impossible de joindre Syncthing".
+
+> Relancer après tout `docker compose up --force-recreate`.
+
+### 7. Validation finale
 
 ```bash
 sda-health   # → {"status": "operational", ...}
@@ -128,7 +140,7 @@ sda-parquet  # → node3_kali_storage.parquet créé
 | Dossier `SDA_Shared` ajouté | ✅ `/var/syncthing/SDA_Shared` |
 | Mot de passe GUI configuré | ✅ Configuré (`sda-admin-kali`) |
 | Couplage avec Node 1 Win11 | ✅ Connecté — réplication bidirectionnelle validée |
-| Couplage avec Node 2 Ubuntu | ⏳ À faire |
+| Couplage avec Node 2 Ubuntu | ⏳ À faire — IP LAN `192.168.200.130:22000` |
 
 ### Procédure de couplage
 

@@ -1,7 +1,8 @@
 # Configuration — Node 2 : VM Ubuntu 26.04 LTS
 
-**Statut :** 🔄 Docker installé — clone en cours  
-**Date de mise en service :** 2026-05-26
+**Statut :** ✅ Déployé et opérationnel  
+**Date de mise en service :** 2026-05-26  
+**Date de validation complète :** 2026-05-27
 
 ---
 
@@ -26,10 +27,10 @@
 
 | Conteneur | Statut | Port exposé |
 |-----------|--------|-------------|
-| `sda-backend` | ⏳ À déployer | interne Docker uniquement (accès via Nginx) |
-| `sda-frontend` | ⏳ À déployer | via Nginx |
-| `sda-nginx` | ⏳ À déployer | `443` (HTTPS/mTLS), `80` (redirect) |
-| `sda-syncthing` | ⏳ À déployer | `8384` (GUI), `22000` (P2P) |
+| `sda-backend` | ✅ healthy | interne Docker uniquement (accès via Nginx) |
+| `sda-frontend` | ✅ healthy | via Nginx |
+| `sda-nginx` | ✅ running | `443` (HTTPS/mTLS), `80` (redirect) |
+| `sda-syncthing` | ✅ healthy | `8384` (GUI), `22000` (P2P) |
 
 ---
 
@@ -124,7 +125,31 @@ sda-nginx       Up X minutes
 sda-syncthing   Up X minutes (healthy)
 ```
 
-### 6. Vérification locale
+### 6. Injection de la clé API Syncthing dans nginx
+
+> **Contexte :** nginx proxifie les appels Syncthing depuis le frontend. L'API Syncthing exige le header `X-API-Key` pour toute requête. Comme chaque nœud génère sa propre clé, celle-ci est injectée via un fichier local non versionné.
+
+```bash
+# Depuis le répertoire sda-prototype/
+bash scripts/setup-syncthing-key.sh
+```
+
+Ce script :
+1. Extrait la clé API depuis `/var/syncthing/config/config.xml` dans le conteneur `sda-syncthing`
+2. Écrit `proxy_set_header X-API-Key "xxxxx";` dans `config/nginx/certs/syncthing-key.conf`
+3. Recharge nginx à chaud via `nginx -s reload` (sans downtime)
+
+> **Important :** relancer ce script après tout `docker compose up --force-recreate` car Syncthing peut régénérer sa clé.
+
+**Vérification :**
+```bash
+# Le dashboard frontend doit afficher les métriques Syncthing sans erreur
+# "Impossible de joindre Syncthing" → doit disparaître après ce script
+```
+
+---
+
+### 7. Vérification locale
 
 ```bash
 # Via mTLS Nginx
@@ -175,10 +200,10 @@ Mot de passe      : <mot de passe fort — min. 12 car., maj+min+chiffres+spéci
 
 | Élément | Statut |
 |---------|--------|
-| GUI accessible | ⏳ Après déploiement : `http://localhost:8384` |
-| ID complet | *(à renseigner après déploiement)* |
-| Dossier `SDA_Shared` ajouté | ⏳ À faire |
-| Mot de passe GUI configuré | ⏳ À faire |
+| GUI accessible | ✅ `http://localhost:8384` |
+| ID complet | *(récupérer via `bash scripts/setup-syncthing-key.sh` ou GUI)* |
+| Dossier `SDA_Shared` ajouté | ✅ `/var/syncthing/SDA_Shared` |
+| Mot de passe GUI configuré | ✅ Configuré (`sda-admin-ubuntu`) |
 | Couplage avec Node 1 Win11 | ⏳ À faire |
 | Couplage avec Node 3 Kali | ⏳ À faire |
 
@@ -266,6 +291,53 @@ echo 'source ~/Desktop/PFE/sda-prototype/scripts/sda-aliases.sh' >> ~/.bashrc
 
 ---
 
+## Problèmes rencontrés et résolus
+
+### P1 — `docker-compose-plugin` introuvable
+
+**Symptôme :** `Unable to locate package docker-compose-plugin`  
+**Cause :** Ubuntu 26.04 ne distribue pas `docker-compose-plugin` dans ses dépôts par défaut.  
+**Solution :** Ajouter le dépôt apt officiel Docker avant installation (voir étape 1 ci-dessus).
+
+---
+
+### P2 — `newgrp: command not found`
+
+**Symptôme :** `Command 'newgrp' not found` après `sudo usermod -aG docker $USER`  
+**Cause :** `newgrp` fait partie du paquet `util-linux-extra`, absent par défaut sur Ubuntu 26.04 (contrairement à 24.04).  
+**Solution :** `sudo apt install -y util-linux-extra` puis `newgrp docker`
+
+---
+
+### P3 — nginx crash : `invalid number of arguments in proxy_set_header`
+
+**Symptôme :** `sda-nginx` s'arrête en boucle — logs : `invalid number of arguments in "proxy_set_header" directive`  
+**Cause :** L'image `nginx:1.25-alpine` utilise `envsubst` (GNU gettext / Alpine) pour traiter les fichiers dans `/etc/nginx/templates/`. Sur Alpine, `envsubst` **détruit les variables nginx** (`$host`, `$remote_addr`, `$scheme`…) car il interprète tout `$variable` comme une variable shell. De plus `${SYNCTHING_API_KEY}` était vide → `proxy_set_header X-API-Key ;` (sans valeur → erreur syntaxe nginx).  
+**Solution :** Contournement total d'envsubst — monter le fichier directement dans `/etc/nginx/conf.d/default.conf` au lieu de `/etc/nginx/templates/` :
+```yaml
+# docker-compose.yml
+volumes:
+  - ./config/nginx/nginx.conf.template:/etc/nginx/conf.d/default.conf:ro
+```
+
+---
+
+### P4 — "Impossible de joindre Syncthing" dans le dashboard frontend
+
+**Symptôme :** Dashboard frontend → `Impossible de joindre Syncthing. Vérifiez que le conteneur est démarré.`  
+**Cause :** En supprimant `SYNCTHING_API_KEY` de docker-compose (fix P3), nginx n'injectait plus le header `X-API-Key` requis par l'API Syncthing → retour HTTP 403 systématique.  
+**Solution :** Mécanisme `include` nginx par nœud :
+- `config/nginx/nginx.conf.template` inclut `include /etc/nginx/certs/syncthing-key.conf;`
+- `scripts/setup-syncthing-key.sh` extrait la clé du conteneur et remplit ce fichier localement
+- Le fichier `syncthing-key.conf` n'est pas commité avec la vraie clé (clé node-specific)
+
+```bash
+bash scripts/setup-syncthing-key.sh
+# → clé extraite + nginx rechargé à chaud
+```
+
+---
+
 ## Problèmes connus / À surveiller
 
 | Symptôme | Cause | Solution |
@@ -274,6 +346,7 @@ echo 'source ~/Desktop/PFE/sda-prototype/scripts/sda-aliases.sh' >> ~/.bashrc
 | `sda-nginx` s'arrête en boucle | Certificats TLS absents | Vérifier `config/nginx/certs/` — relancer `bash scripts/generate-certs.sh` |
 | Port `8000` inaccessible depuis l'hôte | Design intentionnel — non exposé | Utiliser `docker compose exec sda-backend curl` ou passer par Nginx |
 | Syncthing ne voit pas les autres nœuds | Port 22000 bloqué sur `ens37` | Vérifier `ufw` et la connectivité `ping 192.168.200.1` |
+| "Impossible de joindre Syncthing" après recreate | `syncthing-key.conf` périmé | Relancer `bash scripts/setup-syncthing-key.sh` |
 
 ---
 
@@ -287,4 +360,4 @@ echo 'source ~/Desktop/PFE/sda-prototype/scripts/sda-aliases.sh' >> ~/.bashrc
 
 ---
 
-*Node 2 — VM Ubuntu 24.04 LTS — SDA-Prototype v0.1 — EIGSI × AL BARAA CONSULTING*
+*Node 2 — VM Ubuntu 26.04 LTS "resolute" — SDA-Prototype v0.1 — EIGSI × AL BARAA CONSULTING*
