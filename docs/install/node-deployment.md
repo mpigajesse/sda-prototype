@@ -551,6 +551,29 @@ Causes fréquentes :
 - Les deux nœuds ne se sont pas mutuellement ajoutés dans Syncthing GUI
 - Le dossier `SDA_Shared` n'est pas partagé avec le nœud distant
 
+### "Adresse active" Syncthing affiche 172.21.0.x au lieu de 192.168.200.x (Win11)
+
+**Symptôme :** Dans la GUI Syncthing (`http://localhost:8384`) sur Win11, la fiche d'un pair distant affiche :
+```
+Adresse active     172.21.0.1:40088
+Adresses configurées  tcp://192.168.200.130:22000
+```
+
+**Cause — NAT Docker sur Windows :** Comportement normal et attendu. Docker sur Windows (via WSL2) NAT-masquerade toutes les connexions TCP entrantes sur les ports publiés. Quand une VM se connecte à Win11 sur le port 22000, le noyau Linux de WSL2 réécrit l'IP source (ex. `192.168.200.130`) en `172.21.0.1` (passerelle du bridge Docker interne) avant de la transmettre au conteneur Syncthing.
+
+```
+VM (192.168.200.130) ──→ Win11 VMnet1 (192.168.200.1:22000)
+                              │  Docker NAT masquerade
+                              ▼
+              Conteneur sda-syncthing voit : 172.21.0.1:xxxxx
+```
+
+**Ce n'est pas un problème :** La synchronisation fonctionne à 100% car :
+- Win11 → VMs : Syncthing utilise l'adresse configurée (`192.168.200.x`) pour les connexions sortantes ✅
+- VMs → Win11 : les VMs se connectent bien sur `192.168.200.1:22000`, Docker fait le relais ✅
+
+L'"adresse active" `172.21.0.1` est un artefact d'affichage du NAT Docker Windows, pas un problème réseau. Sur Linux natif, l'IP réelle du pair serait visible — sur Windows avec Docker Desktop, ce n'est pas possible sans configuration macvlan avancée inutile ici.
+
 ### `docker: command not found` (Linux)
 
 ```bash

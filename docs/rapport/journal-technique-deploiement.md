@@ -833,4 +833,60 @@ formatMem(system.alloc)  // ex: "4 MB"
 
 ---
 
+## 13. Observations — Comportements normaux documentés
+
+Cette section recense les comportements initialement interprétés comme des anomalies, mais qui s'avèrent être le fonctionnement attendu de l'infrastructure.
+
+---
+
+### 13.1 "Adresse active" Syncthing affiche 172.21.0.x sur Win11
+
+**Observation :** Dans la GUI Syncthing de Win11 (`http://localhost:8384`), les fiches des pairs distants (Ubuntu, Kali) affichent une adresse active sur le réseau `172.21.0.0/16` au lieu du `192.168.200.0/24` configuré.
+
+Exemple observé lors du couplage 3 nœuds :
+```
+Pair VFTEXUZ (Kali)
+  Adresse active       172.21.0.1:50868
+  Adresses configurées tcp://192.168.200.128:22000
+
+Pair G43Q6SJ (Ubuntu)
+  Adresse active       172.21.0.1:40088
+  Adresses configurées tcp://192.168.200.130:22000
+```
+
+**Cause — NAT masquerade Docker sur Windows :**
+
+Docker sur Windows (Docker Desktop / WSL2) publie les ports du conteneur via un mécanisme de NAT masquerade. Quand une connexion TCP entrante arrive sur Win11 depuis une VM (ex. `192.168.200.130`), le stack réseau WSL2 réécrit l'IP source en `172.21.0.1` (passerelle du bridge Docker interne) avant de la transmettre au conteneur :
+
+```
+VM Ubuntu (192.168.200.130)
+  │  connexion vers 192.168.200.1:22000 (VMnet1 Win11)
+  ▼
+Win11 Host — VMnet1 adapter (192.168.200.1)
+  │  port 22000 publishé → conteneur:22000
+  │  Docker NAT : source 192.168.200.130 → 172.21.0.1
+  ▼
+Conteneur sda-syncthing (Win11)
+  └─ voit la connexion provenir de 172.21.0.1 (artefact du NAT)
+```
+
+**Pourquoi les deux adresses coexistent dans l'UI :**
+
+| Champ | Valeur | Signification |
+|-------|--------|---------------|
+| Adresses configurées | `tcp://192.168.200.130:22000` | Adresse que Win11 utilise pour *initier* les connexions vers Ubuntu |
+| Adresse active | `172.21.0.1:40088` | Adresse source vue par le conteneur pour les connexions *entrantes* (après NAT) |
+
+**Conclusion — Pas d'action corrective requise :**
+
+La synchronisation fonctionne à 100% malgré cet affichage :
+- Win11 → VMs : connexions sortantes utilisent bien `192.168.200.x` ✅
+- VMs → Win11 : connexions entrantes reçues et relayées par Docker ✅
+
+L'affichage `172.21.0.1` est un artefact inévitable du NAT Docker Windows. Sur Linux natif, l'IP réelle du pair serait visible. Une configuration macvlan ou `--network=host` permettrait d'y remédier mais est inutile ici — la sync est opérationnelle et les adresses configurées restent correctes.
+
+**Référence :** Section Dépannage dans `docs/install/node-deployment.md`
+
+---
+
 *Document généré pour intégration dans le Rapport de Tests et le Rapport Final de Stage.*
