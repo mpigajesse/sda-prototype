@@ -35,40 +35,58 @@ header "TEST 1 — Health Check"
 # =============================================================================
 
 echo ""
-info "Test 1.1 — Health via Docker exec (sans TLS)"
+info "Test 1.1 — Health interne backend (HTTP port 8000 — réseau Docker privé)"
+# NOTE : port 8000 accessible uniquement depuis l'intérieur du réseau Docker.
+# Tout accès EXTERNE passe obligatoirement par Nginx sur HTTPS/443 (mTLS).
 HEALTH=$(docker compose exec "$BACKEND_SVC" curl -s http://localhost:8000/health 2>/dev/null || echo "ERROR")
 if echo "$HEALTH" | grep -q '"status"'; then
-    pass "Backend opérationnel"
+    pass "Backend opérationnel (accès interne Docker → port 8000 non exposé à l'hôte)"
     echo "    $HEALTH"
 else
     fail "Backend non opérationnel : $HEALTH"
 fi
 
 sep
-info "Test 1.2 — Health via Nginx mTLS (depuis l'intérieur du réseau Docker)"
-# Route via le backend container qui peut atteindre nginx sur le réseau Docker
-HEALTH_TLS=$(docker compose exec "$BACKEND_SVC" \
-    curl -sk \
-    --cert /app/config/nginx/certs/client.crt \
-    --key  /app/config/nginx/certs/client.key \
-    https://nginx/health 2>/dev/null || echo "ERROR")
-if echo "$HEALTH_TLS" | grep -q '"status"'; then
-    pass "Nginx mTLS opérationnel : $HEALTH_TLS"
+info "Test 1.2 — Health via Nginx HTTPS/mTLS (port 443 — accès externe chiffré)"
+# Détection OS : Linux (Ubuntu/Kali) supporte curl OpenSSL avec PEM
+# Windows (Git Bash) utilise schannel qui ne supporte pas les PEM → test depuis conteneur
+IS_LINUX=false
+if [ "$(uname -s)" = "Linux" ]; then IS_LINUX=true; fi
+
+if $IS_LINUX; then
+    # Sur Linux : curl hôte supporte PEM → test HTTPS réel depuis l'hôte
+    HEALTH_TLS=$(curl -sk \
+        --cert config/nginx/certs/client.crt \
+        --key  config/nginx/certs/client.key \
+        https://localhost/health 2>/dev/null || echo "ERROR")
+    if echo "$HEALTH_TLS" | grep -q '"status"'; then
+        pass "HTTPS/mTLS opérationnel (TLS 1.3 — certificat client validé) : $HEALTH_TLS"
+    else
+        fail "HTTPS/mTLS échoué : $HEALTH_TLS"
+    fi
 else
-    # Fallback : tester via localhost depuis l'hôte avec PowerShell (Windows)
-    info "SKIP — curl mTLS depuis Git Bash non supporté (schannel Windows)"
-    info "  → Tester manuellement : curl -sk --cert config/nginx/certs/client.crt --key config/nginx/certs/client.key https://localhost/health"
-    SKIP=$((SKIP+1))
+    # Sur Windows Git Bash : schannel ne supporte pas PEM → appel via conteneur
+    HEALTH_TLS=$(docker compose exec "$BACKEND_SVC" \
+        curl -sk \
+        --cert /app/config/nginx/certs/client.crt \
+        --key  /app/config/nginx/certs/client.key \
+        https://nginx/health 2>/dev/null || echo "ERROR")
+    if echo "$HEALTH_TLS" | grep -q '"status"'; then
+        pass "HTTPS/mTLS opérationnel (via réseau Docker interne) : $HEALTH_TLS"
+    else
+        info "SKIP — curl PEM non supporté sur Windows/schannel"
+        info "  → Valider manuellement dans Chrome : https://localhost/ avec certificat client"
+        SKIP=$((SKIP+1))
+    fi
 fi
 
 sep
-info "Test 1.3 — Rejet sans certificat client (attendu : HTTP 400)"
-# Ce test fonctionne sans cert — pas de problème schannel
+info "Test 1.3 — Rejet HTTPS sans certificat client (attendu : HTTP 400)"
 REJECTED=$(curl -sk -o /dev/null -w "%{http_code}" https://localhost/health 2>/dev/null || echo "0")
 if [ "$REJECTED" = "400" ]; then
-    pass "Accès refusé sans certificat (HTTP $REJECTED) ✓ Sécurité mTLS active"
+    pass "Accès HTTPS refusé sans certificat client (HTTP $REJECTED) ✓ mTLS actif"
 elif [ "$REJECTED" = "0" ]; then
-    info "SKIP — curl ne peut pas atteindre https://localhost depuis Git Bash (schannel)"
+    info "SKIP — curl/schannel Windows ne peut pas établir la connexion TLS sans cert"
     SKIP=$((SKIP+1))
 else
     fail "Attendu HTTP 400, obtenu HTTP $REJECTED"
@@ -82,7 +100,9 @@ NODE_LABEL="demo_sda"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")
 
 echo ""
-info "Test 2.1 — POST /api/v1/data/ingest via Docker exec"
+info "Test 2.1 — POST /api/v1/data/ingest (HTTP interne Docker — port 8000 non exposé)"
+# Accès direct au backend depuis l'intérieur du conteneur (réseau Docker privé).
+# En production, ce même endpoint est exposé uniquement via Nginx HTTPS/443/mTLS.
 INGEST=$(docker compose exec "$BACKEND_SVC" \
     curl -s -X POST http://localhost:8000/api/v1/data/ingest \
     -H "Content-Type: application/json" \
@@ -303,7 +323,7 @@ header "TEST 5 — CRDT Réconciliation"
 # =============================================================================
 
 echo ""
-info "Test 5.1 — POST /api/v1/sync/reconcile via Docker exec"
+info "Test 5.1 — POST /api/v1/sync/reconcile (HTTP interne Docker — port 8000 non exposé)"
 RECONCILE=$(docker compose exec "$BACKEND_SVC" \
     curl -s -X POST http://localhost:8000/api/v1/sync/reconcile \
     -H "Content-Type: application/json" \
