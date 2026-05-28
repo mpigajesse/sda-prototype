@@ -1,404 +1,492 @@
-# Tests Graphiques — Démonstration Jury SDA
+# Guide de Démonstration Graphique — SDA-Prototype
 
-**Cluster actif :**
-- Node 1 — Win11 `192.168.200.1` (PC physique)
-- Node 2 — Ubuntu `192.168.200.130` (VM VMware)
-- Node 3 — Kali `192.168.200.128` (VM VMware)
+**Cluster :**
+- Node 1 — Win11 `192.168.200.1` · PC physique (hôte VMware)
+- Node 2 — Ubuntu `192.168.200.130` · VM VMware
+- Node 3 — Kali `192.168.200.128` · VM VMware
 
-**Prérequis :** Les 3 nœuds sont démarrés, Syncthing synchronisé à 100%.
+**Prérequis :**
+- Les 3 nœuds sont démarrés (`docker compose up -d`)
+- Le certificat client `sda-client.p12` est importé dans Chrome/Firefox sur chaque nœud
+- Syncthing synchronisé à 100% sur les 3 nœuds
+
+**Interfaces graphiques utilisées :**
+
+| Interface | URL | Quoi on y voit |
+|-----------|-----|----------------|
+| **Dashboard SDA** | `https://localhost/` | État du backend, fichiers, ingestion |
+| **Syncthing GUI** | `http://localhost:8384` | Pairs connectés, progression sync, conflits |
+| **Swagger UI** | `https://localhost/docs` | API interactive avec résultats JSON |
 
 ---
 
-## Scénario 1 — État de santé du cluster (Health Check)
+## SCÉNARIO 1 — Vue d'ensemble : cluster opérationnel (3 nœuds)
 
-**Ce que ça prouve :** L'architecture local-first fonctionne — chaque nœud est autonome et opérationnel indépendamment.
+**Message au jury :** *"Chaque nœud est autonome. Voici les 3 nœuds actifs simultanément."*
 
-### Étapes
+### Ce qu'on fait
 
-**Sur chaque nœud, ouvrir le dashboard :**
-```
-https://localhost/
-```
+**Sur Win11 :** Ouvrir 3 onglets côte à côte dans Chrome :
 
-**Sur chaque nœud, vérifier via terminal :**
-```bash
-# Node 1 Win11
-docker compose exec sda-backend curl -s http://localhost:8000/health | python -m json.tool
+| Onglet | URL |
+|--------|-----|
+| Onglet 1 | `https://localhost/` |
+| Onglet 2 | `https://192.168.200.130/` |
+| Onglet 3 | `https://192.168.200.128/` |
 
-# Node 2 Ubuntu
-docker compose exec sda-backend curl -s http://localhost:8000/health | python3 -m json.tool
+> Chrome utilisera automatiquement le certificat client importé.
 
-# Node 3 Kali
-docker compose exec sda-backend curl -s http://localhost:8000/health | python3 -m json.tool
-```
+**Sur chaque nœud (Ubuntu + Kali) :** Ouvrir `https://localhost/` dans leur propre navigateur.
 
-**Réponse attendue sur les 3 nœuds :**
+### Ce qu'on montre
+
+- Les 3 dashboards affichent `"status": operational`
+- Les 3 dashboards affichent `"offline_ready": true`
+- Chaque nœud a son propre compteur de fichiers Parquet locaux
+
+### Captures à prendre
+
+| # | Ce qu'on capture | Nom fichier |
+|---|-----------------|------------|
+| 1a | Dashboard Win11 — statut "operational" visible | `s1_dashboard_win11.png` |
+| 1b | Dashboard Ubuntu — statut "operational" visible | `s1_dashboard_ubuntu.png` |
+| 1c | Dashboard Kali — statut "operational" visible | `s1_dashboard_kali.png` |
+| 1d | **Mosaïque : 3 dashboards ouverts simultanément** | `s1_mosaic_3nodes.png` |
+
+---
+
+## SCÉNARIO 2 — Réplication P2P en temps réel
+
+**Message au jury :** *"Une donnée injectée sur Win11 apparaît automatiquement sur Ubuntu et Kali en moins de 30 secondes — sans aucune action manuelle."*
+
+### Préparation (avant la démo)
+
+Sur Win11 : ouvrir **Syncthing GUI** dans un 2e écran ou onglet → `http://localhost:8384`
+
+Sur Ubuntu (dans VMware) : ouvrir `http://localhost:8384`
+
+Sur Kali (dans VMware) : ouvrir `http://localhost:8384`
+
+### Ce qu'on fait — étape par étape
+
+**Étape 1 — Montrer l'état initial**
+
+Sur Win11 Syncthing GUI :
+- Section **"sda-shared"** → noter le nombre de fichiers affiché (ex: "16 fichiers, 48 KiB")
+- Les 2 pairs Ubuntu et Kali sont en vert "À jour"
+
+→ **Capturer `s2_before_syncthing_win11.png`**
+
+**Étape 2 — Injecter des données via Swagger UI**
+
+Sur Win11, ouvrir : `https://localhost/docs`
+
+1. Cliquer sur `POST /api/v1/data/ingest` → **"Try it out"**
+2. Saisir le body :
 ```json
 {
-  "status": "operational",
-  "architecture": "local-first / distributed",
-  "offline_ready": true
+  "tenant_id": "demo_replication",
+  "data": {
+    "source": "node1_win11",
+    "message": "Test réplication P2P en direct",
+    "temperature": 23.5,
+    "capteur_id": "SENSOR-001",
+    "timestamp": "2026-05-27T14:30:00Z"
+  }
 }
 ```
+3. Cliquer **"Execute"**
+4. Observer la réponse : `"status": "success"`, `audit_id`, `record_hash`
 
-### Captures à prendre
+→ **Capturer `s2_swagger_ingest_win11.png`** (la réponse JSON visible)
 
-| # | Quoi capturer | Nœud | Nom fichier |
-|---|---------------|------|------------|
-| 1a | Dashboard frontend — section "Statut Backend" vert | Win11 | `test1_health_win11.png` |
-| 1b | Dashboard frontend — section "Statut Backend" vert | Ubuntu | `test1_health_ubuntu.png` |
-| 1c | Dashboard frontend — section "Statut Backend" vert | Kali | `test1_health_kali.png` |
-| 1d | Terminal : réponse JSON `"status": "operational"` | Win11 | `test1_api_health_win11.png` |
+**Étape 3 — Observer la réplication**
 
----
+Rester sur Win11 Syncthing GUI et regarder :
+- La barre de progression passe brièvement à "En cours de synchronisation…"
+- Revient à "À jour" avec **+1 fichier** (ou fichier mis à jour)
 
-## Scénario 2 — Réplication P2P : Win11 → Ubuntu + Kali
+→ **Capturer `s2_syncthing_syncing_win11.png`** (pendant ou juste après la sync)
 
-**Ce que ça prouve :** Une donnée injectée sur Node 1 se retrouve automatiquement sur Node 2 et Node 3 sans action manuelle — c'est le cœur du système SDA.
+**Étape 4 — Vérifier sur Ubuntu**
 
-### Étapes
+Sur Ubuntu Syncthing GUI (`http://localhost:8384`) :
+- Le dossier "sda-shared" affiche le même nombre de fichiers que Win11
+- Le fichier `demo_replication_storage.parquet` apparaît dans `data/shared_storage/`
 
-**Étape A — Avant injection : noter l'état initial des fichiers Parquet**
+Sur Ubuntu Dashboard (`https://localhost/`) :
+- La liste des fichiers synchronisés inclut maintenant `demo_replication_storage.parquet`
 
-Sur Win11 (PowerShell) :
-```powershell
-docker compose exec sda-backend ls -lh /app/data/shared_storage/
-```
+→ **Capturer `s2_replicated_ubuntu_syncthing.png`**
+→ **Capturer `s2_replicated_ubuntu_dashboard.png`**
 
-Sur Ubuntu et Kali (terminal) :
-```bash
-ls -lh ~/Desktop/PFE/sda-prototype/data/shared_storage/   # Ubuntu
-ls -lh ~/PFE/sda-prototype/data/shared_storage/            # Kali
-```
-→ **Capturer l'état AVANT** (liste fichiers + timestamps)
+**Étape 5 — Vérifier sur Kali (idem)**
 
-**Étape B — Injecter des données sur Win11**
+→ **Capturer `s2_replicated_kali_dashboard.png`**
 
-```powershell
-# Win11 PowerShell
-curl -sk `
-  --cert config/nginx/certs/client.crt `
-  --key config/nginx/certs/client.key `
-  -X POST https://localhost/api/v1/data/ingest `
-  -H "Content-Type: application/json" `
-  -d '{"tenant_id": "demo_jury", "data": {"test": "replication_p2p", "source": "win11", "timestamp": "2026-05-27T12:00:00"}}'
-```
+### Captures récapitulatives
 
-→ **Capturer la réponse JSON** avec `audit_id` et `record_hash`
-
-**Étape C — Attendre 15–30 secondes, vérifier sur Ubuntu et Kali**
-
-```bash
-# Ubuntu
-watch -n 2 "ls -lh ~/Desktop/PFE/sda-prototype/data/shared_storage/ | grep demo_jury"
-
-# Kali
-watch -n 2 "ls -lh ~/PFE/sda-prototype/data/shared_storage/ | grep demo_jury"
-```
-
-→ **Capturer le moment où le fichier apparaît** sur chaque VM
-
-**Étape D — Lire le fichier Parquet depuis Ubuntu (preuve du contenu)**
-
-```bash
-# Ubuntu
-docker compose exec sda-backend python3 -c "
-import duckdb
-result = duckdb.execute(\"SELECT tenant_id, data, created_at FROM read_parquet('/app/data/shared_storage/demo_jury_storage.parquet') LIMIT 5\").fetchall()
-for row in result: print(row)
-"
-```
-
-### Captures à prendre
-
-| # | Quoi capturer | Nœud | Nom fichier |
-|---|---------------|------|------------|
-| 2a | Liste fichiers AVANT injection | Win11 | `test2_before_win11.png` |
-| 2b | Commande curl + réponse JSON `record_hash` | Win11 | `test2_ingest_win11.png` |
-| 2c | Fichier `demo_jury_storage.parquet` apparu | Ubuntu | `test2_replicated_ubuntu.png` |
-| 2d | Fichier `demo_jury_storage.parquet` apparu | Kali | `test2_replicated_kali.png` |
-| 2e | Lecture DuckDB du contenu repliqué | Ubuntu | `test2_duckdb_read_ubuntu.png` |
+| # | Ce qu'on capture | Nom fichier |
+|---|-----------------|------------|
+| 2a | Syncthing Win11 — état initial (X fichiers, À jour) | `s2_before_syncthing_win11.png` |
+| 2b | Swagger UI — body d'injection + réponse JSON `record_hash` | `s2_swagger_ingest_win11.png` |
+| 2c | Syncthing Win11 — "En cours de synchronisation" ou "+1 fichier" | `s2_syncthing_syncing_win11.png` |
+| 2d | Syncthing Ubuntu — fichier apparu, "À jour" | `s2_replicated_ubuntu_syncthing.png` |
+| 2e | Dashboard Ubuntu — fichier `demo_replication` dans la liste | `s2_replicated_ubuntu_dashboard.png` |
+| 2f | Dashboard Kali — même fichier présent | `s2_replicated_kali_dashboard.png` |
 
 ---
 
-## Scénario 3 — Ingestion multi-nœuds simultanée
+## SCÉNARIO 3 — Nœud hors-service : tolérance aux pannes
 
-**Ce que ça prouve :** Chaque nœud peut écrire indépendamment, les données se consolident dans un espace partagé — architecture distribuée symétrique.
+**Message au jury :** *"Que se passe-t-il si un nœud tombe ? Les deux autres continuent de fonctionner normalement. À la reconnexion, le nœud manquant se synchronise automatiquement."*
 
-### Étapes
+### Ce qu'on fait — étape par étape
 
-**Injecter depuis les 3 nœuds (quasi-simultané, ~5 s d'écart)**
+**Étape 1 — Montrer le cluster complet (état initial)**
 
-Win11 :
-```powershell
-curl -sk --cert config/nginx/certs/client.crt --key config/nginx/certs/client.key `
-  -X POST https://localhost/api/v1/data/ingest `
-  -H "Content-Type: application/json" `
-  -d '{"tenant_id": "multinode_test", "data": {"node": "win11", "value": 100}}'
-```
+Sur Win11 Syncthing GUI :
+- Les 2 pairs (Ubuntu + Kali) sont en vert "À jour"
 
-Ubuntu :
-```bash
-curl -sk --cert config/nginx/certs/client.crt --key config/nginx/certs/client.key \
-  -X POST https://localhost/api/v1/data/ingest \
-  -H "Content-Type: application/json" \
-  -d '{"tenant_id": "multinode_test", "data": {"node": "ubuntu", "value": 200}}'
-```
+→ **Capturer `s3_before_all_connected.png`**
 
-Kali :
-```bash
-curl -sk --cert config/nginx/certs/client.crt --key config/nginx/certs/client.key \
-  -X POST https://localhost/api/v1/data/ingest \
-  -H "Content-Type: application/json" \
-  -d '{"tenant_id": "multinode_test", "data": {"node": "kali", "value": 300}}'
-```
+**Étape 2 — Mettre Ubuntu hors service**
 
-**Après synchronisation (~30 s), requête analytique globale depuis Win11 :**
+Sur la VM Ubuntu dans VMware :
+- Fermer la fenêtre VMware de Ubuntu **OU** dans VMware Player → **Suspend** (mettre en pause)
 
-```powershell
-docker compose exec sda-backend python3 -c "
-import duckdb, glob
-files = glob.glob('/app/data/shared_storage/*.parquet')
-result = duckdb.execute(f\"SELECT tenant_id, data FROM read_parquet({files}) WHERE tenant_id='multinode_test' ORDER BY created_at\").fetchall()
-for r in result: print(r)
-"
-```
+Attendre 10–15 secondes.
 
-→ Les données des 3 nœuds doivent apparaître dans une seule requête.
+Sur Win11 Syncthing GUI :
+- Ubuntu passe en **rouge/orange** → "Déconnecté" ou "Hors ligne"
+- Kali reste vert "À jour"
 
-### Captures à prendre
+→ **Capturer `s3_ubuntu_offline_syncthing.png`** ← moment clé !
 
-| # | Quoi capturer | Nœud | Nom fichier |
-|---|---------------|------|------------|
-| 3a | Ingestion sur Win11 | Win11 | `test3_ingest_win11.png` |
-| 3b | Ingestion sur Ubuntu | Ubuntu | `test3_ingest_ubuntu.png` |
-| 3c | Ingestion sur Kali | Kali | `test3_ingest_kali.png` |
-| 3d | Requête DuckDB agrégeant les 3 nœuds | Win11 | `test3_global_query_win11.png` |
+**Étape 3 — Continuer à travailler : injecter des données sur Win11 et Kali**
 
----
-
-## Scénario 4 — Sécurité mTLS : accès refusé sans certificat
-
-**Ce que ça prouve :** Le système est sécurisé — seuls les clients authentifiés par certificat X.509 peuvent accéder aux données.
-
-### Étapes
-
-**Test A — Accès refusé sans certificat client**
-
-```powershell
-# Win11 — sans certificat → doit retourner HTTP 400
-curl -sk https://localhost/health
-```
-
-Réponse attendue :
-```html
-<html>
-<head><title>400 No required SSL certificate was sent</title></head>
-```
-
-**Test B — Accès autorisé avec certificat client**
-
-```powershell
-# Win11 — avec certificat → doit retourner 200 OK
-curl -sk --cert config/nginx/certs/client.crt --key config/nginx/certs/client.key https://localhost/health
-```
-
-Réponse attendue :
+Sur Win11 Swagger (`https://localhost/docs`) → `POST /api/v1/data/ingest` :
 ```json
-{"status": "operational", "architecture": "local-first / distributed", "offline_ready": true}
+{
+  "tenant_id": "test_resilience_w11",
+  "data": {
+    "source": "node1_win11",
+    "message": "Donnée injectée pendant panne Ubuntu",
+    "valeur": 99,
+    "timestamp": "2026-05-27T15:00:00Z"
+  }
+}
 ```
+→ **Capturer `s3_ingest_win11_while_ubuntu_offline.png`** (succès malgré la panne)
 
-**Test C — Démonstration navigateur Chrome (visuel)**
+Sur Kali Swagger (`https://localhost/docs`) → `POST /api/v1/data/ingest` :
+```json
+{
+  "tenant_id": "test_resilience_kali",
+  "data": {
+    "source": "node3_kali",
+    "message": "Kali continue de fonctionner",
+    "valeur": 77
+  }
+}
+```
+→ **Capturer `s3_ingest_kali_while_ubuntu_offline.png`**
 
-1. Ouvrir Chrome sur Win11
-2. Aller sur `https://localhost/`
-3. Cliquer sur le cadenas → "La connexion est sécurisée" → "Le certificat est valide"
-4. Afficher le certificat : CN=`sda-client-node-1`, CA=`SDA Internal CA`
+**Étape 4 — Montrer qu'Ubuntu n'a pas encore ces fichiers (avant reconnexion)**
 
-### Captures à prendre
+Sur Ubuntu Syncthing GUI (si encore visible) :
+- La section du dossier "sda-shared" montre que la sync est en attente
 
-| # | Quoi capturer | Nœud | Nom fichier |
-|---|---------------|------|------------|
-| 4a | Réponse `400 No required SSL certificate` (sans cert) | Win11 | `test4_rejected_no_cert.png` |
-| 4b | Réponse `200 operational` (avec cert) | Win11 | `test4_accepted_with_cert.png` |
-| 4c | Chrome cadenas → "Connexion sécurisée" | Win11 | `test4_chrome_padlock.png` |
-| 4d | Détails du certificat client dans Chrome | Win11 | `test4_chrome_cert_details.png` |
+→ **Capturer `s3_ubuntu_missing_files.png`** (si possible)
+
+**Étape 5 — Reconnecter Ubuntu**
+
+Dans VMware : **Reprendre** la VM Ubuntu (Resume).
+
+Attendre 15–30 secondes.
+
+Sur Win11 Syncthing GUI :
+- Ubuntu repasse en vert "À jour"
+- Le compteur de fichiers synchronisés augmente
+
+→ **Capturer `s3_ubuntu_reconnected_syncing.png`** (pendant la sync)
+→ **Capturer `s3_ubuntu_back_in_sync.png`** (après, "À jour")
+
+**Étape 6 — Vérifier sur Ubuntu que les données sont bien arrivées**
+
+Sur Ubuntu Dashboard (`https://localhost/`) :
+- Les fichiers `test_resilience_w11_storage.parquet` et `test_resilience_kali_storage.parquet` sont maintenant présents
+
+→ **Capturer `s3_ubuntu_dashboard_recovered.png`**
+
+### Captures récapitulatives
+
+| # | Ce qu'on capture | Nom fichier |
+|---|-----------------|------------|
+| 3a | Syncthing Win11 — tous connectés (état initial) | `s3_before_all_connected.png` |
+| 3b | **Syncthing Win11 — Ubuntu en rouge "Déconnecté"** | `s3_ubuntu_offline_syncthing.png` |
+| 3c | Swagger Win11 — ingestion réussie malgré la panne | `s3_ingest_win11_while_ubuntu_offline.png` |
+| 3d | Swagger Kali — ingestion réussie (Kali toujours actif) | `s3_ingest_kali_while_ubuntu_offline.png` |
+| 3e | Syncthing Win11 — Ubuntu reconnecté, sync en cours | `s3_ubuntu_reconnected_syncing.png` |
+| 3f | Syncthing Win11 — retour à "À jour" | `s3_ubuntu_back_in_sync.png` |
+| 3g | Dashboard Ubuntu — fichiers récupérés après reconnexion | `s3_ubuntu_dashboard_recovered.png` |
 
 ---
 
-## Scénario 5 — Résistance au mode hors-ligne (Offline-First)
+## SCÉNARIO 4 — Sécurité mTLS : qui peut accéder ?
 
-**Ce que ça prouve :** L'architecture local-first est réelle — un nœud fonctionne sans réseau, les données sont capturées localement et synchronisées à la reconnexion.
+**Message au jury :** *"L'accès à l'API est protégé par authentification mutuelle TLS. Sans certificat client valide, l'accès est refusé."*
 
-### Étapes
+### Ce qu'on fait — étape par étape
 
-**Étape A — Isoler Ubuntu (simuler déconnexion réseau)**
+**Test A — Accès refusé dans Firefox (mode privé sans certificat)**
 
-Sur Win11 (PowerShell) — désactiver VMnet1 vers Ubuntu :
-```powershell
-# Vérifier que Ubuntu est bien connecté avant
-ping 192.168.200.130
+1. Ouvrir Firefox en mode navigation **privée** (Ctrl+Maj+P)
+2. Taper : `https://localhost/`
+3. Firefox demande si on veut choisir un certificat → cliquer **"Annuler"** (ne pas en fournir)
+4. La page affiche `400 — No required SSL certificate was sent`
 
-# Option 1 : Sur la VM Ubuntu, désactiver l'interface ens37
-# (à faire dans la console VMware ou sur Ubuntu directement)
-```
+→ **Capturer `s4_rejected_no_cert.png`** ← accès refusé visible
 
-Sur Ubuntu :
-```bash
-sudo ip link set ens37 down   # Désactiver VMnet1 (interface P2P)
-# Ubuntu est maintenant isolé du cluster
-```
+**Test B — Accès autorisé dans Chrome (avec certificat)**
 
-**Étape B — Injecter des données sur Ubuntu pendant la déconnexion**
+1. Ouvrir Chrome normalement
+2. Taper : `https://localhost/`
+3. Chrome affiche une popup "Sélectionner un certificat" → choisir `sda-client-node-1`
+4. Le dashboard SDA s'affiche normalement
 
-```bash
-# Ubuntu (hors-ligne du P2P)
-curl -sk --cert config/nginx/certs/client.crt --key config/nginx/certs/client.key \
-  -X POST https://localhost/api/v1/data/ingest \
-  -H "Content-Type: application/json" \
-  -d '{"tenant_id": "offline_test", "data": {"node": "ubuntu_offline", "status": "written_while_disconnected"}}'
-```
+→ **Capturer `s4_accepted_with_cert.png`**
 
-**Étape C — Vérifier que Win11 n'a PAS encore le fichier**
+**Test C — Afficher les détails de sécurité dans Chrome**
 
-```powershell
-ls data/shared_storage/ | grep offline_test
-# Doit être vide
-```
+1. Sur Chrome avec le dashboard ouvert : cliquer sur le **cadenas** dans la barre d'adresse
+2. Cliquer sur **"La connexion est sécurisée"**
+3. Cliquer sur **"Le certificat est valide"**
+4. Afficher : `CN = sda-client-node-1`, émis par `SDA Internal CA`, TLS 1.3
 
-**Étape D — Reconnecter Ubuntu**
+→ **Capturer `s4_chrome_padlock.png`**
+→ **Capturer `s4_chrome_cert_details.png`** (détails du certificat)
 
-```bash
-# Ubuntu
-sudo ip link set ens37 up    # Réactiver VMnet1
-```
+**Test D — Montrer Nginx reject dans Swagger (optionnel)**
 
-**Étape E — Observer la synchronisation automatique (~15–30 s)**
+1. Ouvrir `https://localhost/docs` en **mode privé** Firefox (sans cert)
+2. La page ne charge pas → `400 Bad Request`
 
-```powershell
-# Win11 — attendre l'apparition
-watch -n 3 ls data/shared_storage/  # PowerShell : boucle while
-while ($true) { ls data\shared_storage\ | grep offline; Start-Sleep 3 }
-```
+→ **Capturer `s4_swagger_rejected.png`**
 
-### Captures à prendre
+### Captures récapitulatives
 
-| # | Quoi capturer | Nœud | Nom fichier |
-|---|---------------|------|------------|
-| 5a | Syncthing GUI Ubuntu — nœud Win11 "Déconnecté" | Ubuntu | `test5_ubuntu_offline.png` |
-| 5b | Injection réussie sur Ubuntu hors-ligne | Ubuntu | `test5_ingest_offline.png` |
-| 5c | Win11 — fichier absent pendant déconnexion | Win11 | `test5_win11_no_file_yet.png` |
-| 5d | Reconnexion Ubuntu — Syncthing repasse à 100% | Ubuntu | `test5_reconnected.png` |
-| 5e | Win11 — fichier apparu après reconnexion | Win11 | `test5_win11_file_appeared.png` |
+| # | Ce qu'on capture | Nom fichier |
+|---|-----------------|------------|
+| 4a | Firefox mode privé → `400 No required SSL certificate` | `s4_rejected_no_cert.png` |
+| 4b | Chrome avec cert → dashboard accessible | `s4_accepted_with_cert.png` |
+| 4c | Chrome cadenas → "Connexion sécurisée" | `s4_chrome_padlock.png` |
+| 4d | Chrome → détails certificat client CN + CA | `s4_chrome_cert_details.png` |
 
 ---
 
-## Scénario 6 — Audit Trail : traçabilité cryptographique
+## SCÉNARIO 5 — Mode hors-ligne total : nœud isolé
 
-**Ce que ça prouve :** Chaque opération est horodatée et liée par hash SHA-256 — toute modification ultérieure des données serait détectable (tamper detection).
+**Message au jury :** *"Un nœud déconnecté d'internet et du réseau local reste 100% opérationnel. Les données sont capturées localement et rattrapées à la reconnexion."*
 
-### Étapes
+### Ce qu'on fait — étape par étape
 
-**Afficher la chaîne d'audit depuis Win11 :**
+**Étape 1 — Isoler complètement Kali (simuler coupure réseau)**
 
-```powershell
-docker compose exec sda-backend python3 -c "
-from sqlalchemy import create_engine, text
-engine = create_engine('sqlite:////app/data/db/metadata_enc.db')
-# Note: en production, la DB est chiffrée SQLCipher
-# Pour la démo, interroger via le backend FastAPI
-"
+Dans VMware Player, sélectionner la VM Kali :
+- Menu **VM → Settings → Network Adapter**
+- Décocher **"Connected"** (ou passer en "Host-only" déconnecté)
+
+→ Kali n'a plus accès au réseau VMnet1.
+
+Sur Win11 Syncthing GUI → Kali passe en rouge "Déconnecté"
+
+→ **Capturer `s5_kali_offline_syncthing.png`**
+
+**Étape 2 — Injecter des données sur Kali (hors-ligne)**
+
+Sur la VM Kali, ouvrir `https://localhost/docs` :
+- Le dashboard local fonctionne toujours parfaitement (local-first !)
+- `POST /api/v1/data/ingest` :
+```json
+{
+  "tenant_id": "kali_offline_data",
+  "data": {
+    "source": "node3_kali",
+    "message": "Donnée créée en mode hors-ligne",
+    "capteur": "TEMP-003",
+    "valeur": 36.6,
+    "timestamp": "2026-05-27T16:00:00Z"
+  }
+}
 ```
+→ **Capturer `s5_kali_ingest_offline.png`** — l'injection réussit même sans réseau !
 
-**Via l'API (si endpoint /audit disponible) :**
-```powershell
-curl -sk --cert config/nginx/certs/client.crt --key config/nginx/certs/client.key \
-  https://localhost/api/v1/data/audit | python -m json.tool
-```
+**Étape 3 — Vérifier que Win11 n'a pas encore la donnée**
 
-**Ou via DuckDB — lire les métadonnées :**
-```powershell
-docker compose exec sda-backend python3 -c "
-import duckdb, glob
-files = glob.glob('/app/data/shared_storage/*.parquet')
-if files:
-    result = duckdb.execute(f'SELECT tenant_id, record_hash, created_at FROM read_parquet({files}) ORDER BY created_at DESC LIMIT 10').fetchall()
-    for r in result: print(r)
-"
-```
+Sur Win11 Syncthing GUI : Kali est toujours rouge, fichier absent
 
-### Captures à prendre
+→ **Capturer `s5_win11_no_kali_data.png`**
 
-| # | Quoi capturer | Nœud | Nom fichier |
-|---|---------------|------|------------|
-| 6a | Liste des enregistrements avec `record_hash` visible | Win11 | `test6_audit_trail.png` |
-| 6b | Deux enregistrements consécutifs — hashes différents | Win11 | `test6_hash_chaining.png` |
+**Étape 4 — Reconnecter Kali**
+
+Dans VMware : re-cocher **"Connected"** sur l'adaptateur réseau de Kali.
+
+Sur Win11 Syncthing GUI :
+- Kali repasse en vert "À jour" (sync automatique)
+- Le fichier `kali_offline_data_storage.parquet` se propage vers Win11 et Ubuntu
+
+→ **Capturer `s5_kali_reconnected.png`** (pendant la sync)
+→ **Capturer `s5_win11_kali_data_arrived.png`** (fichier apparu sur Win11)
+
+**Étape 5 — Vérifier sur Ubuntu que Kali est de nouveau sync**
+
+Sur Ubuntu Syncthing GUI :
+- Kali passe de "Déconnecté" à "À jour"
+- Fichier `kali_offline_data_storage.parquet` visible
+
+→ **Capturer `s5_ubuntu_kali_synced.png`**
+
+### Captures récapitulatives
+
+| # | Ce qu'on capture | Nom fichier |
+|---|-----------------|------------|
+| 5a | Syncthing Win11 — Kali en rouge "Déconnecté" | `s5_kali_offline_syncthing.png` |
+| 5b | Dashboard Kali — ingestion réussie hors-ligne | `s5_kali_ingest_offline.png` |
+| 5c | Syncthing Win11 — fichier Kali absent | `s5_win11_no_kali_data.png` |
+| 5d | Syncthing Win11 — Kali reconnecté, sync en cours | `s5_kali_reconnected.png` |
+| 5e | Syncthing Win11 — fichier Kali arrivé, "À jour" | `s5_win11_kali_data_arrived.png` |
+| 5f | Dashboard Ubuntu — donnée Kali propagée | `s5_ubuntu_kali_synced.png` |
 
 ---
 
-## Scénario 7 — Dashboard complet : vue 3 nœuds simultanément
+## SCÉNARIO 6 — Consolidation analytique multi-nœuds (Swagger)
 
-**Ce que ça prouve :** La plateforme est opérationnelle, les métriques temps réel sont accessibles sur chaque nœud, l'interface est fonctionnelle.
+**Message au jury :** *"Depuis n'importe quel nœud, on peut interroger les données de TOUT le cluster — sans serveur central."*
 
-### Disposition recommandée pour capture
+### Ce qu'on fait — étape par étape
 
-Ouvrir **en parallèle** sur 3 écrans ou en mosaïque :
+**Sur Win11 Swagger (`https://localhost/docs`) :**
 
-| Fenêtre | URL | Nœud |
-|---------|-----|------|
-| Navigateur 1 | `https://localhost/` | Win11 |
-| Navigateur 2 | `https://192.168.200.130/` (depuis Win11 + cert) | Ubuntu |
-| Navigateur 3 | `https://192.168.200.128/` (depuis Win11 + cert) | Kali |
+1. Cliquer sur `GET /api/v1/node/info` → **"Try it out"** → **"Execute"**
+   - Affiche : ID Syncthing, nombre de fichiers synchronisés, tenants connus
+→ **Capturer `s6_node_info_win11.png`**
 
-**Points à faire apparaître dans chaque dashboard :**
-- Section "Syncthing" : pairs connectés = 2/2
-- Section "Fichiers synchronisés" : liste des `.parquet`
-- Section "Statut Backend" : `operational`
-- Syncthing GUI (`http://192.168.200.130:8384`) : progression 100%
+2. Cliquer sur `GET /health` → **"Execute"**
+   - Affiche : `"offline_ready": true`, `"central_dependency": "none"`
+→ **Capturer `s6_health_win11.png`**
 
-### Captures à prendre
+3. Cliquer sur `POST /api/v1/sync/reconcile` → **"Execute"** (body vide)
+   - Affiche : `{"status": "no_conflicts", "conflicts_resolved": 0}`
+→ **Capturer `s6_reconcile_win11.png`**
 
-| # | Quoi capturer | Nom fichier |
-|---|---------------|------------|
-| 7a | Dashboard Win11 — vue complète | `test7_dashboard_win11_full.png` |
-| 7b | Dashboard Ubuntu — vue complète | `test7_dashboard_ubuntu_full.png` |
-| 7c | Dashboard Kali — vue complète | `test7_dashboard_kali_full.png` |
-| 7d | Syncthing GUI Win11 — 2 pairs connectés | `test7_syncthing_gui_win11.png` |
-| 7e | Syncthing GUI Ubuntu — 2 pairs connectés | `test7_syncthing_gui_ubuntu.png` |
-| 7f | Capture d'écran mosaïque 3 dashboards simultanés | `test7_cluster_overview.png` |
+**Même chose sur Ubuntu et Kali :**
+
+Ouvrir `https://localhost/docs` sur chaque nœud :
+- `GET /api/v1/node/info` → montrer que les IDs Syncthing sont différents (nœuds distincts)
+
+→ **Capturer `s6_node_info_ubuntu.png`**
+→ **Capturer `s6_node_info_kali.png`**
+
+**Comparaison côte à côte :**
+- Ouvrir 3 fenêtres Swagger simultanément sur Win11 :
+  - `https://localhost/docs`
+  - `https://192.168.200.130/docs`
+  - `https://192.168.200.128/docs`
+- Exécuter `GET /api/v1/node/info` sur chacun → montrer les 3 IDs distincts
+
+→ **Capturer `s6_swagger_3nodes_mosaic.png`**
+
+### Captures récapitulatives
+
+| # | Ce qu'on capture | Nom fichier |
+|---|-----------------|------------|
+| 6a | Swagger Win11 — `/node/info` avec ID Syncthing | `s6_node_info_win11.png` |
+| 6b | Swagger Win11 — `/health` `offline_ready: true` | `s6_health_win11.png` |
+| 6c | Swagger Win11 — `/reconcile` `no_conflicts` | `s6_reconcile_win11.png` |
+| 6d | Swagger Ubuntu — `/node/info` (ID différent) | `s6_node_info_ubuntu.png` |
+| 6e | Swagger Kali — `/node/info` (ID différent) | `s6_node_info_kali.png` |
+| 6f | **Mosaïque 3 Swagger — 3 IDs distincts simultanément** | `s6_swagger_3nodes_mosaic.png` |
 
 ---
 
-## Récapitulatif — Ordre de passage recommandé pour le jury
+## SCÉNARIO 7 — Vue finale : cluster complet opérationnel
 
-| Ordre | Scénario | Durée | Impact |
-|-------|----------|-------|--------|
-| 1 | Health check — 3 nœuds opérationnels | 2 min | Architecture distribuée visible |
-| 2 | Dashboard mosaïque — vue cluster | 1 min | Vue d'ensemble immédiate |
-| 3 | **Réplication P2P Win11 → VMs** | 3 min | **Preuve clé du système** |
-| 4 | Ingestion multi-nœuds + requête globale DuckDB | 3 min | Consolidation distribuée |
-| 5 | Sécurité mTLS — accès refusé vs autorisé | 2 min | Sécurité enterprise |
-| 6 | Mode hors-ligne → reconnexion + rattrapage | 4 min | Résilience offline-first |
-| 7 | Audit trail — hashes SHA-256 | 2 min | Traçabilité cryptographique |
+**Message au jury :** *"Synthèse : les 3 nœuds, Syncthing, les dashboards — tout en même temps."*
 
-**Durée totale démo live : ~17 minutes**
+### Disposition recommandée (Win11 avec 2 écrans ou grande résolution)
+
+**Écran principal :**
+- Chrome : `https://localhost/` (dashboard Win11)
+- Chrome onglet 2 : `https://192.168.200.130/` (dashboard Ubuntu via Win11)
+- Chrome onglet 3 : `https://192.168.200.128/` (dashboard Kali via Win11)
+
+**Écran secondaire (ou onglets) :**
+- Syncthing Win11 : `http://localhost:8384` — 2 pairs connectés, 100%
+- VMware Player — fenêtres Ubuntu et Kali visibles avec leur propre dashboard
+
+### Ce qu'on montre
+
+Dans Syncthing GUI Win11 :
+- **2 pairs connectés** : Ubuntu ✅ Kali ✅
+- Dossier "sda-shared" : "N fichiers, X KiB — À jour"
+- Dernière synchronisation : il y a quelques secondes
+
+Dans chaque dashboard SDA :
+- `status: operational`
+- `offline_ready: true`
+- Même liste de fichiers Parquet sur les 3 nœuds (preuve de cohérence)
+
+### Captures finales
+
+| # | Ce qu'on capture | Nom fichier |
+|---|-----------------|------------|
+| 7a | Syncthing Win11 — 2 pairs verts + statistiques sync | `s7_syncthing_win11_final.png` |
+| 7b | Syncthing Ubuntu — 2 pairs verts + Win11 + Kali | `s7_syncthing_ubuntu_final.png` |
+| 7c | Dashboard Win11 complet | `s7_dashboard_win11_final.png` |
+| 7d | Dashboard Ubuntu complet | `s7_dashboard_ubuntu_final.png` |
+| 7e | Dashboard Kali complet | `s7_dashboard_kali_final.png` |
+| 7f | **Photo finale : mosaïque des 3 dashboards + Syncthing** | `s7_cluster_final_mosaic.png` |
 
 ---
 
-## Checklist avant la démo
+## Ordre de passage recommandé (17 minutes)
+
+| Ordre | Scénario | Durée | Message clé |
+|-------|----------|-------|-------------|
+| 1 | **Vue d'ensemble** — 3 dashboards ouverts simultanément | 2 min | Architecture distribuée |
+| 2 | **Réplication P2P** — injection Win11 → apparition Ubuntu + Kali | 3 min | Le cœur du système |
+| 3 | **Sécurité mTLS** — refus Firefox vs accès Chrome | 2 min | Sécurité enterprise |
+| 4 | **Nœud hors-service** — Ubuntu suspendu, travail continue | 4 min | Tolérance aux pannes |
+| 5 | **Mode hors-ligne** — Kali sans réseau, injection locale, rattrapage | 3 min | Offline-first réel |
+| 6 | **API / Swagger** — node_info, reconcile, health sur 3 nœuds | 2 min | Consolidation distribuée |
+| 7 | **Vue finale** — mosaïque cluster complet | 1 min | Synthèse visuelle |
+
+---
+
+## Checklist pré-démo (à vérifier 30 min avant)
 
 ```
-[ ] docker compose ps → 4 conteneurs healthy sur Win11
-[ ] docker compose ps → 4 conteneurs healthy sur Ubuntu
-[ ] docker compose ps → 4 conteneurs healthy sur Kali
-[ ] Syncthing GUI Win11 (http://localhost:8384) → 2 pairs connectés, 100%
-[ ] bash scripts/setup-syncthing-key.sh → exécuté sur chaque nœud
-[ ] https://localhost/ accessible depuis Chrome sur Win11 (cert client installé)
-[ ] Certificats CA importés dans les navigateurs des 3 nœuds
-[ ] data/shared_storage/ visible et synchronisé sur les 3 nœuds
-[ ] Dossier docs/rapport/screenshots/ prêt pour les captures
+Nœuds :
+[ ] docker compose ps sur Win11  → 4 services healthy
+[ ] docker compose ps sur Ubuntu → 4 services healthy
+[ ] docker compose ps sur Kali   → 4 services healthy
+
+Syncthing :
+[ ] http://localhost:8384 sur Win11  → 2 pairs connectés, "À jour"
+[ ] http://localhost:8384 sur Ubuntu → 2 pairs connectés, "À jour"
+[ ] http://localhost:8384 sur Kali   → 2 pairs connectés, "À jour"
+
+Navigateurs :
+[ ] Certificat sda-client.p12 importé dans Chrome (Win11, Ubuntu, Kali)
+[ ] https://localhost/ s'ouvre sans erreur sur les 3 nœuds
+[ ] https://localhost/docs accessible (Swagger UI)
+
+Données :
+[ ] Au moins 10 fichiers .parquet dans data/shared_storage/ sur chaque nœud
+[ ] Aucun fichier en état "conflit" dans Syncthing
 ```
 
 ---
 
-*Tests de démonstration jury — SDA-Prototype v0.1 — EIGSI × AL BARAA CONSULTING — 2026*
+*Guide démonstration graphique — SDA-Prototype v0.1 — EIGSI × AL BARAA CONSULTING — 2026*
