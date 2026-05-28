@@ -39,6 +39,11 @@ services:
       - DB_ENCRYPTION_KEY=${DB_ENCRYPTION_KEY:-changeme-replace-in-production}
       # Générer : python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
       - PARQUET_FERNET_KEY=${PARQUET_FERNET_KEY:-}
+      # Identité du nœud pour la souveraineté des fichiers du coffre-fort
+      # NODE_NAME : nom unique du nœud (ex: win11, ubuntu, kali)
+      # NODE_VAULT_KEY : clé Fernet du coffre-fort (générée automatiquement si absente)
+      - NODE_NAME=${NODE_NAME:-}
+      - NODE_VAULT_KEY=${NODE_VAULT_KEY:-}
     depends_on: []
     restart: unless-stopped
     healthcheck:

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Upload, Trash2, Download, FileText, FileImage,
   FileSpreadsheet, File, AlertCircle, Loader2, HardDrive,
+  Lock, LockOpen, Key, Copy, Check, X, Eye, EyeOff,
 } from 'lucide-react'
 
 interface FileEntry {
@@ -9,6 +10,14 @@ interface FileEntry {
   size: number
   modified: string
   mime: string
+  owner_node: string
+  is_mine: boolean
+}
+
+interface VaultKeyInfo {
+  node_name: string
+  vault_key: string
+  instructions: string
 }
 
 function fileIcon(mime: string, name: string) {
@@ -34,6 +43,162 @@ function formatDate(iso: string): string {
   })
 }
 
+// ─── Modal : déverrouiller un fichier étranger ───────────────────────────────
+interface UnlockModalProps {
+  filename: string
+  ownerNode: string
+  onClose: () => void
+}
+
+function UnlockModal({ filename, ownerNode, onClose }: UnlockModalProps) {
+  const [key, setKey] = useState('')
+  const [showKey, setShowKey] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [downloading, setDownloading] = useState(false)
+
+  const handleDownload = async () => {
+    if (!key.trim()) { setError('Veuillez coller la clé de déchiffrement.'); return }
+    setDownloading(true)
+    setError(null)
+    try {
+      const url = `/api/v1/files/download/${encodeURIComponent(filename)}?key=${encodeURIComponent(key.trim())}`
+      const res = await fetch(url)
+      if (!res.ok) {
+        const body = await res.json() as { detail?: string }
+        throw new Error(body.detail ?? `HTTP ${res.status}`)
+      }
+      const blob = await res.blob()
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(a.href)
+      onClose()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Clé incorrecte ou fichier corrompu.')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+      <div className="w-full max-w-md bg-[#161b22] border border-[#30363d] rounded-2xl shadow-2xl p-6">
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
+              <Lock size={14} className="text-amber-400" />
+              Déverrouiller le fichier
+            </h2>
+            <p className="text-xs text-slate-500 mt-1 font-mono truncate">{filename}</p>
+          </div>
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="mb-4 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-400">
+          Ce fichier appartient au nœud <span className="font-semibold font-mono">{ownerNode}</span>.
+          Demandez sa clé de coffre-fort et collez-la ci-dessous.
+        </div>
+
+        <label className="block text-xs text-slate-400 mb-1.5">Clé de déchiffrement (Fernet base64)</label>
+        <div className="relative">
+          <input
+            type={showKey ? 'text' : 'password'}
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+            placeholder="Collez la clé ici…"
+            className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 pr-10 text-xs font-mono text-slate-300 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+          />
+          <button
+            type="button"
+            onClick={() => setShowKey((v) => !v)}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+          >
+            {showKey ? <EyeOff size={13} /> : <Eye size={13} />}
+          </button>
+        </div>
+
+        {error && (
+          <div className="mt-3 flex items-center gap-2 text-xs text-red-400">
+            <AlertCircle size={12} />
+            {error}
+          </div>
+        )}
+
+        <div className="flex gap-3 mt-5">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2 rounded-lg border border-[#30363d] text-xs text-slate-400 hover:text-slate-200 hover:bg-[#21262d] transition-colors"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={() => void handleDownload()}
+            disabled={downloading || !key.trim()}
+            className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-xs text-white font-medium transition-colors flex items-center justify-center gap-2"
+          >
+            {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+            Déchiffrer & Télécharger
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Section : partager sa propre clé ────────────────────────────────────────
+interface MyKeyPanelProps {
+  info: VaultKeyInfo
+}
+
+function MyKeyPanel({ info }: MyKeyPanelProps) {
+  const [copied, setCopied] = useState(false)
+  const [revealed, setRevealed] = useState(false)
+
+  const copy = () => {
+    void navigator.clipboard.writeText(info.vault_key)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Key size={14} className="text-emerald-400 shrink-0" />
+        <span className="text-xs font-semibold text-emerald-400">Ma clé de coffre-fort</span>
+        <span className="ml-auto font-mono text-[10px] bg-[#161b22] border border-white/5 px-2 py-0.5 rounded-full text-slate-500">
+          {info.node_name}
+        </span>
+      </div>
+      <p className="text-xs text-slate-500 mb-3">
+        Partagez cette clé avec un pair pour qu'il puisse déchiffrer vos fichiers depuis son nœud.
+      </p>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 font-mono text-[11px] text-slate-400 overflow-hidden">
+          {revealed ? info.vault_key : '••••••••••••••••••••••••••••••••••••••••••••'}
+        </div>
+        <button
+          onClick={() => setRevealed((v) => !v)}
+          className="shrink-0 p-2 rounded-lg border border-[#30363d] text-slate-500 hover:text-slate-300 hover:bg-[#161b22] transition-colors"
+          title={revealed ? 'Masquer' : 'Afficher'}
+        >
+          {revealed ? <EyeOff size={13} /> : <Eye size={13} />}
+        </button>
+        <button
+          onClick={copy}
+          className="shrink-0 p-2 rounded-lg border border-[#30363d] text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-colors"
+          title="Copier la clé"
+        >
+          {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Composant principal ──────────────────────────────────────────────────────
 export function FilesManager() {
   const [files, setFiles] = useState<FileEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -41,6 +206,8 @@ export function FilesManager() {
   const [error, setError] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [deletingName, setDeletingName] = useState<string | null>(null)
+  const [vaultKey, setVaultKey] = useState<VaultKeyInfo | null>(null)
+  const [unlockTarget, setUnlockTarget] = useState<FileEntry | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const fetchFiles = useCallback(async () => {
@@ -56,7 +223,18 @@ export function FilesManager() {
     }
   }, [])
 
-  useEffect(() => { void fetchFiles() }, [fetchFiles])
+  const fetchVaultKey = useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/files/my-key')
+      if (!res.ok) return
+      setVaultKey(await res.json() as VaultKeyInfo)
+    } catch { /* non-bloquant */ }
+  }, [])
+
+  useEffect(() => {
+    void fetchFiles()
+    void fetchVaultKey()
+  }, [fetchFiles, fetchVaultKey])
 
   const upload = useCallback(async (file: File) => {
     setUploading(true)
@@ -94,21 +272,35 @@ export function FilesManager() {
     setDeletingName(name)
     try {
       const res = await fetch(`/api/v1/files/${encodeURIComponent(name)}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (!res.ok) {
+        const body = await res.json() as { detail?: string }
+        throw new Error(body.detail ?? `HTTP ${res.status}`)
+      }
       await fetchFiles()
-    } catch {
-      setError(`Erreur lors de la suppression de "${name}"`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : `Erreur lors de la suppression de "${name}"`)
     } finally {
       setDeletingName(null)
     }
   }, [fetchFiles])
 
-  const totalSize = files.reduce((acc, f) => acc + f.size, 0)
+  const ownFiles    = files.filter((f) => f.is_mine)
+  const foreignFiles = files.filter((f) => !f.is_mine)
+  const totalSize   = ownFiles.reduce((acc, f) => acc + f.size, 0)
 
   return (
     <div className="flex flex-col gap-6">
 
-      {/* Drop zone */}
+      {/* Modal déverrouillage */}
+      {unlockTarget && (
+        <UnlockModal
+          filename={unlockTarget.name}
+          ownerNode={unlockTarget.owner_node}
+          onClose={() => setUnlockTarget(null)}
+        />
+      )}
+
+      {/* Zone de dépôt */}
       <div
         onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
         onDragLeave={() => setDragOver(false)}
@@ -131,7 +323,7 @@ export function FilesManager() {
         {uploading ? (
           <div className="flex flex-col items-center gap-3">
             <Loader2 size={28} className="text-blue-400 animate-spin" />
-            <p className="text-sm text-slate-400">Upload en cours…</p>
+            <p className="text-sm text-slate-400">Chiffrement et upload en cours…</p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-3">
@@ -148,7 +340,7 @@ export function FilesManager() {
         )}
       </div>
 
-      {/* Error */}
+      {/* Erreur globale */}
       {error && (
         <div className="flex items-center gap-2 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
           <AlertCircle size={14} className="shrink-0" />
@@ -156,18 +348,10 @@ export function FilesManager() {
         </div>
       )}
 
-      {/* Stats bar */}
-      {!loading && files.length > 0 && (
-        <div className="flex items-center gap-4 text-xs text-slate-500 px-1">
-          <span><span className="text-slate-300 font-semibold">{files.length}</span> fichier{files.length > 1 ? 's' : ''}</span>
-          <span>·</span>
-          <span>Total <span className="text-slate-300 font-semibold">{formatSize(totalSize)}</span></span>
-          <span>·</span>
-          <span className="text-emerald-400">Répliqués P2P via Syncthing</span>
-        </div>
-      )}
+      {/* Ma clé de coffre-fort */}
+      {vaultKey && <MyKeyPanel info={vaultKey} />}
 
-      {/* File list */}
+      {/* Chargement */}
       {loading ? (
         <div className="flex items-center justify-center py-12 text-slate-500 gap-2">
           <Loader2 size={16} className="animate-spin" />
@@ -180,60 +364,148 @@ export function FilesManager() {
           <p className="text-xs">Déposez le premier fichier ci-dessus</p>
         </div>
       ) : (
-        <div className="rounded-xl border border-[#30363d] overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[#30363d] bg-[#161b22] text-left">
-                <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Fichier</th>
-                <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Taille</th>
-                <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Modifié</th>
-                <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#21262d]">
-              {files.map((f) => (
-                <tr key={f.name} className="hover:bg-[#161b22] transition-colors group">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      {fileIcon(f.mime, f.name)}
-                      <span className="truncate font-mono text-xs text-slate-300">{f.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-slate-500 font-mono text-xs hidden sm:table-cell whitespace-nowrap">
-                    {formatSize(f.size)}
-                  </td>
-                  <td className="px-4 py-3 text-slate-500 text-xs hidden md:table-cell whitespace-nowrap">
-                    {formatDate(f.modified)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-2">
-                      <a
-                        href={`/api/v1/files/download/${encodeURIComponent(f.name)}`}
-                        download={f.name}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
-                        title="Télécharger"
-                      >
-                        <Download size={13} />
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => void deleteFile(f.name)}
-                        disabled={deletingName === f.name}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40"
-                        title="Supprimer"
-                      >
-                        {deletingName === f.name
-                          ? <Loader2 size={13} className="animate-spin" />
-                          : <Trash2 size={13} />
-                        }
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          {/* ── Mes fichiers ─────────────────────────────────────── */}
+          <section>
+            <div className="flex items-center gap-2 mb-3">
+              <LockOpen size={14} className="text-emerald-400" />
+              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Mes fichiers
+              </h3>
+              <span className="ml-auto font-mono text-[10px] text-slate-500">
+                {ownFiles.length} · {formatSize(totalSize)}
+              </span>
+            </div>
+
+            {ownFiles.length === 0 ? (
+              <p className="text-xs text-slate-600 py-4 text-center">
+                Aucun fichier uploadé depuis ce nœud.
+              </p>
+            ) : (
+              <div className="rounded-xl border border-emerald-500/20 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-[#30363d] bg-emerald-500/5 text-left">
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Fichier</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Taille</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Modifié</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#21262d]">
+                    {ownFiles.map((f) => (
+                      <tr key={f.name} className="hover:bg-[#161b22] transition-colors group">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <LockOpen size={12} className="text-emerald-500 shrink-0" />
+                            {fileIcon(f.mime, f.name)}
+                            <span className="truncate font-mono text-xs text-slate-300">{f.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-slate-500 font-mono text-xs hidden sm:table-cell whitespace-nowrap">
+                          {formatSize(f.size)}
+                        </td>
+                        <td className="px-4 py-3 text-slate-500 text-xs hidden md:table-cell whitespace-nowrap">
+                          {formatDate(f.modified)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-2">
+                            <a
+                              href={`/api/v1/files/download/${encodeURIComponent(f.name)}`}
+                              download={f.name}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+                              title="Télécharger"
+                            >
+                              <Download size={13} />
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => void deleteFile(f.name)}
+                              disabled={deletingName === f.name}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40"
+                              title="Supprimer"
+                            >
+                              {deletingName === f.name
+                                ? <Loader2 size={13} className="animate-spin" />
+                                : <Trash2 size={13} />
+                              }
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          {/* ── Fichiers des pairs ────────────────────────────────── */}
+          {foreignFiles.length > 0 && (
+            <section>
+              <div className="flex items-center gap-2 mb-3">
+                <Lock size={14} className="text-amber-400" />
+                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Fichiers des pairs
+                </h3>
+                <span className="ml-auto font-mono text-[10px] text-slate-500">
+                  {foreignFiles.length} fichier{foreignFiles.length > 1 ? 's' : ''}
+                </span>
+              </div>
+
+              <div className="rounded-xl border border-amber-500/20 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-[#30363d] bg-amber-500/5 text-left">
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Fichier</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Propriétaire</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Taille</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#21262d]">
+                    {foreignFiles.map((f) => (
+                      <tr key={f.name} className="hover:bg-[#161b22] transition-colors opacity-75 hover:opacity-100">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Lock size={12} className="text-amber-500 shrink-0" />
+                            {fileIcon(f.mime, f.name)}
+                            <span className="truncate font-mono text-xs text-slate-500">{f.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 hidden sm:table-cell">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#21262d] border border-[#30363d] text-[10px] font-mono text-slate-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                            {f.owner_node}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 font-mono text-xs hidden md:table-cell whitespace-nowrap">
+                          {formatSize(f.size)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            type="button"
+                            onClick={() => setUnlockTarget(f)}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-colors"
+                            title="Déverrouiller avec la clé du propriétaire"
+                          >
+                            <Key size={11} />
+                            Déverrouiller
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <p className="text-xs text-slate-600 mt-2 px-1">
+                Ces fichiers sont répliqués par Syncthing mais chiffrés avec la clé du nœud propriétaire.
+                Demandez la clé via l'interface "Ma clé de coffre-fort" du pair concerné.
+              </p>
+            </section>
+          )}
+        </>
       )}
     </div>
   )

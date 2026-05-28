@@ -30,8 +30,11 @@ data/db/*.db-shm
 data/db/*.db-wal
 data/shared_storage/*.parquet
 data/shared_storage/*.parquet.enc
+data/shared_storage/*.sda-owner
 data/shared_storage/.stfolder/
 data/shared_storage/.sync-conflict-*
+# Clé Fernet auto-générée du coffre-fort (ne jamais versionner)
+data/db/.node_vault_key
 # Garder les placeholders vides
 !data/db/.gitkeep
 !data/shared_storage/.gitkeep
