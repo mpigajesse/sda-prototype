@@ -10,6 +10,7 @@ import { NodeIdentityCard } from './components/NodeIdentityCard'
 import { FolderList } from './components/FolderList'
 import { PeerList } from './components/PeerList'
 import { EventFeed } from './components/EventFeed'
+import { FilesManager } from './components/FilesManager'
 
 function formatUptime(seconds: number): string {
   const h = Math.floor(seconds / 3600)
@@ -175,6 +176,17 @@ export default function App() {
 
       case 'events':
         return <EventFeed />
+
+      case 'files':
+        return (
+          <div>
+            <SectionHeader title="Coffre-fort de fichiers" accent="bg-orange-500" />
+            <p className="text-xs text-slate-500 mb-6">
+              Déposez n'importe quel fichier — il sera répliqué automatiquement sur tous les nœuds P2P via Syncthing.
+            </p>
+            <FilesManager />
+          </div>
+        )
     }
   }
 
@@ -204,6 +216,7 @@ export default function App() {
             {activeSection === 'folders' && 'Dossiers synchronisés'}
             {activeSection === 'peers' && 'Appareils pairs'}
             {activeSection === 'events' && 'Journal d\'événements'}
+          {activeSection === 'files'  && 'Coffre-fort de fichiers'}
           </h1>
 
           <div className="ml-auto flex items-center gap-3 shrink-0">

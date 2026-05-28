@@ -10,9 +10,10 @@ import {
   ChevronRight,
   Menu,
   X,
+  HardDrive,
 } from 'lucide-react'
 
-export type SidebarSection = 'overview' | 'folders' | 'peers' | 'events'
+export type SidebarSection = 'overview' | 'folders' | 'peers' | 'events' | 'files'
 
 interface NavItem {
   id: SidebarSection
@@ -45,6 +46,12 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Événements',
     icon: <Activity size={16} />,
     accent: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+  },
+  {
+    id: 'files',
+    label: 'Coffre-fort',
+    icon: <HardDrive size={16} />,
+    accent: 'text-orange-400 bg-orange-500/10 border-orange-500/30',
   },
 ]
 

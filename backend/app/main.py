@@ -2,7 +2,7 @@ import platform
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base
-from .routers import data, sync
+from .routers import data, sync, files
 
 Base.metadata.create_all(bind=engine)
 
@@ -35,8 +35,9 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization", "X-Client-DN"],
 )
 
-app.include_router(data.router, prefix="/api/v1/data", tags=["Moteur de Données"])
-app.include_router(sync.router, prefix="/api/v1/sync", tags=["Réseau P2P"])
+app.include_router(data.router,  prefix="/api/v1/data",  tags=["Moteur de Données"])
+app.include_router(sync.router,  prefix="/api/v1/sync",  tags=["Réseau P2P"])
+app.include_router(files.router, prefix="/api/v1/files", tags=["Coffre-fort Fichiers"])
 
 
 @app.get("/health", tags=["Système"])
