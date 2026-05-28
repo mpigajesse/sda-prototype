@@ -2,7 +2,7 @@
 
 **Date d'exécution :** 2026-05-27  
 **Environnement :** Cluster 3 nœuds (Win11 + Ubuntu 26.04 LTS + Kali Linux)  
-**Version du script :** `scripts/demo-tests.sh` — commit `8b6ffde`
+**Version du script :** `scripts/demo-tests.sh` — commit `421f825`
 
 ---
 
@@ -48,11 +48,11 @@ Le script `scripts/demo-tests.sh` exécute 11 tests répartis en 6 catégories.
 | Nœud | ✅ PASS | ❌ FAIL | ⏭ SKIP | Total |
 |------|--------|--------|--------|-------|
 | Node 1 — Win11 | **10** | 0 | 1 | 11 |
-| Node 2 — Ubuntu | **10** | 0 | 1 | 11 |
-| Node 3 — Kali | **10** | 0 | 1 | 11 |
-| **Total cluster** | **30/33** | **0** | **3** | **33** |
+| Node 2 — Ubuntu | **11** | 0 | 0 | 11 |
+| Node 3 — Kali | **11** | 0 | 0 | 11 |
+| **Total cluster** | **32/33** | **0** | **1** | **33** |
 
-> **Note SKIP :** Le test 1.2 (curl mTLS HTTPS) est skippé sur les 3 nœuds car le script s'exécute via Bash natif (Linux) ou Git Bash (Windows), dont le client `curl` utilise le backend TLS système (`schannel` sur Windows, `OpenSSL` sans accès aux certs hôte depuis le conteneur). Ce test est validé manuellement via navigateur Chrome/Firefox (voir Section 4).
+> **Note SKIP (Win11 uniquement) :** Le test 1.2 (curl mTLS HTTPS) est skippé sur Win11 car Git Bash utilise le backend TLS `schannel` de Windows qui ne supporte pas les certificats PEM. Sur les nœuds Linux (Ubuntu, Kali), `curl` utilise OpenSSL et le test est exécuté directement depuis l'hôte — résultat 11/11 PASS. Ce test est également validé manuellement via navigateur Chrome/Firefox sur Win11 (voir Section 4).
 
 ---
 
@@ -71,6 +71,18 @@ Le script `scripts/demo-tests.sh` exécute 11 tests répartis en 6 catégories.
 | Kali | ✅ PASS | idem |
 
 **Analyse :** Les 3 nœuds répondent `"offline_ready": true` — confirme l'architecture local-first. L'absence de `"central_dependency"` prouve qu'aucun serveur central n'est requis.
+
+#### 1.2 — Health via HTTPS/mTLS depuis l'hôte (port 443)
+
+| Nœud | Résultat | Méthode | Réponse |
+|------|----------|---------|---------|
+| Win11 | ⏭ SKIP | `curl` schannel — PEM non supporté | Validé manuellement via navigateur |
+| Ubuntu | ✅ PASS | `curl --cert client.crt --key client.key https://localhost/health` | `{"status":"operational",...}` — TLS 1.3 |
+| Kali | ✅ PASS | `curl --cert client.crt --key client.key https://localhost/health` | `{"status":"operational",...}` — TLS 1.3 |
+
+**Analyse :** Sur les nœuds Linux, le test confirme que Nginx accepte les connexions HTTPS avec certificat client valide (TLS 1.3, mTLS). Le certificat client `client.crt` est signé par la CA interne SDA. Sur Win11, la validation est effectuée via navigateur (voir Section 4).
+
+---
 
 #### 1.3 — Rejet sans certificat client (mTLS)
 
@@ -127,11 +139,11 @@ tenant=node1_win11 at=2026-05-25 21:43:42.496075
 | Nœud exécutant la requête | Total enregistrements | Tenants distincts |
 |--------------------------|----------------------|-------------------|
 | Win11 | 609 | 14 |
-| Ubuntu | **607** | **15** |
-| Kali | **607** | **15** |
+| Ubuntu | **609** | **16** |
+| Kali | **609** | **16** |
 
 **Analyse :**  
-Une seule requête DuckDB sur Ubuntu ou Kali consolide les données de **tous les nœuds du cluster** (15 tenants distincts incluant `node1_win11`, `node3_kali`, `demo_sda`, `bench_test`, `tenant_000` à `tenant_009`). Ceci démontre le paradigme **Code-to-Data** : les données restent locales, mais sont accessibles depuis n'importe quel nœud via le dossier partagé Syncthing.
+Une seule requête DuckDB sur Ubuntu ou Kali consolide les données de **tous les nœuds du cluster** (16 tenants distincts incluant `node1_win11`, `node3_kali`, `demo_sda`, `bench_test`, `tenant_000` à `tenant_009`). Ceci démontre le paradigme **Code-to-Data** : les données restent locales, mais sont accessibles depuis n'importe quel nœud via le dossier partagé Syncthing.
 
 ---
 
@@ -141,7 +153,7 @@ Une seule requête DuckDB sur Ubuntu ou Kali consolide les données de **tous le
 
 #### 4.1 — Contenu du dossier shared_storage
 
-**Fichiers présents sur Ubuntu et Kali (15 fichiers) :**
+**Fichiers présents sur Ubuntu et Kali (16 fichiers) :**
 
 | Fichier | Taille | Origine | Chiffré |
 |---------|--------|---------|---------|
@@ -150,17 +162,18 @@ Une seule requête DuckDB sur Ubuntu ou Kali consolide les données de **tous le
 | `node1_demo_storage.parquet` | 826 B | Win11 | Non |
 | `node1_win11_storage.parquet` | 1.0 KB | Win11 | Non |
 | `node3_kali_storage.parquet` | 1.1 KB | Kali | **Oui (Fernet)** |
+| `node2_ubuntu_storage.parquet` | 1.1 KB | Ubuntu | **Oui (Fernet)** |
 | `tenant_000_storage.parquet` à `tenant_009_storage.parquet` | 1.7–2.1 KB chacun | Win11 (load test) | Non |
 
 #### 4.2 — Intégrité des fichiers
 
 | Nœud | Fichiers non chiffrés valides | Fichiers chiffrés valides | Corrompus |
 |------|------------------------------|--------------------------|-----------|
-| Win11 | 13 | 1 | 0 |
-| Ubuntu | 13 | 2 | 0 |
-| Kali | 13 | 2 | 0 |
+| Win11 | 13 | 2 | 0 |
+| Ubuntu | 13 | 3 | 0 |
+| Kali | 13 | 3 | 0 |
 
-**Analyse :** Aucun fichier corrompu sur les 3 nœuds. Les fichiers `demo_sda_storage.parquet` et `node3_kali_storage.parquet` sont chiffrés Fernet (créés après configuration du `.env` avec `PARQUET_FERNET_KEY`). Les fichiers legacy (tenant_xxx, bench_test, node1_*) ont été créés avant la mise en place du chiffrement.
+**Analyse :** Aucun fichier corrompu sur les 3 nœuds. Les fichiers `demo_sda_storage.parquet`, `node3_kali_storage.parquet` et `node2_ubuntu_storage.parquet` sont chiffrés Fernet (créés après configuration du `.env` avec `PARQUET_FERNET_KEY`). Les fichiers legacy (tenant_xxx, bench_test, node1_*) ont été créés avant la mise en place du chiffrement.
 
 ---
 
@@ -193,17 +206,36 @@ Une seule requête DuckDB sur Ubuntu ou Kali consolide les données de **tous le
 
 ---
 
-## 4. Validation manuelle mTLS (navigateur)
+## 4. Validation mTLS — Automatisée (Linux) et manuelle (Win11)
 
-Le test 1.2 automatisé étant skippé, la validation mTLS a été effectuée manuellement via navigateur.
+### 4.1 — Validation automatisée sur Ubuntu et Kali (Test 1.2)
 
-### Procédure
+Sur les nœuds Linux, le test 1.2 s'exécute depuis l'hôte avec `curl` OpenSSL :
 
+```bash
+curl -sk \
+    --cert config/nginx/certs/client.crt \
+    --key  config/nginx/certs/client.key \
+    https://localhost/health
+```
+
+**Résultats :**
+
+| Nœud | Sortie du test |
+|------|---------------|
+| Ubuntu | `✅ PASS  HTTPS/mTLS opérationnel (TLS 1.3 — certificat client validé) : {"status":"operational",...}` |
+| Kali | `✅ PASS  HTTPS/mTLS opérationnel (TLS 1.3 — certificat client validé) : {"status":"operational",...}` |
+
+### 4.2 — Validation manuelle sur Win11 (navigateur Chrome)
+
+Le test 1.2 étant skippé sur Win11 (limitation `schannel`), la validation est effectuée via navigateur.
+
+**Procédure :**
 1. Importer `ca.crt` (CA interne SDA) dans le magasin de certificats de confiance
 2. Importer `sda-client.p12` comme certificat client
 3. Accéder à `https://localhost/` — Chrome sélectionne automatiquement le certificat
 
-### Résultats
+**Résultats :**
 
 | Test | Résultat |
 |------|----------|
@@ -253,7 +285,7 @@ La réplication P2P bidirectionnelle Win11 ↔ Ubuntu ↔ Kali est **validée à
 | Audit trail SHA-256 | Hash chaîné sur chaque ingestion | `record_hash` unique par enreg. | ✅ |
 | Stabilité | Conteneurs healthy en continu | Win11 : 45h uptime Syncthing | ✅ |
 | Intégrité fichiers | 0 fichier corrompu | 0 corrompu sur 3 nœuds | ✅ |
-| DuckDB multi-nœuds | Consolidation depuis n'importe quel nœud | 607–609 enreg., 14–15 tenants | ✅ |
+| DuckDB multi-nœuds | Consolidation depuis n'importe quel nœud | 609 enreg., 16 tenants (Ubuntu/Kali) | ✅ |
 
 ---
 
@@ -266,24 +298,29 @@ La réplication P2P bidirectionnelle Win11 ↔ Ubuntu ↔ Kali est **validée à
 **Impact :** Aucun — sync 100% opérationnelle.  
 **Référence :** Section 13.1 du journal technique.
 
-### 7.2 — Win11 ne voit que 14 fichiers (vs 15 sur Ubuntu/Kali)
+### 7.2 — Win11 peut ne pas voir tous les fichiers Linux (comportement Syncthing)
 
-**Observation :** `node3_kali_storage.parquet` a été supprimé manuellement depuis Win11 pour résoudre un fichier corrompu. Ubuntu et Kali conservent la version valide.  
-**Cause :** Syncthing propage les suppressions — Win11 ayant supprimé le fichier, il ne le reçoit plus automatiquement.  
-**Solution :** Relancer `sda-ingest` sur Kali pour créer une nouvelle version qui sera propagée vers Win11.  
-**Impact :** Mineur — 14/15 fichiers présents sur Win11, données Kali toujours accessibles via Ubuntu.
+**Observation :** Suite à la suppression manuelle de `node3_kali_storage.parquet` sur Win11 (résolution d'un fichier corrompu), Syncthing propage la suppression — Win11 n'a pas reçu la nouvelle version créée sur Kali jusqu'à redémarrage du service.  
+**Cause :** Syncthing propage les suppressions aux autres membres du cluster — comportement attendu pour préserver la cohérence.  
+**Solution :** Re-ingérer des données depuis le nœud concerné ou redémarrer le service Syncthing pour forcer la resynchronisation.  
+**Impact :** Mineur — les données du nœud sont toujours accessibles via les deux autres nœuds du cluster.
 
 ---
 
 ## 8. Conclusion
 
-Le cluster SDA-Prototype v0.1 est **entièrement validé** sur les 3 nœuds. Les 10 tests automatisés passent sur chaque nœud (30/30 PASS au total, 3 SKIP non bloquants). Les critères de succès du POC sont tous atteints.
+Le cluster SDA-Prototype v0.1 est **entièrement validé** sur les 3 nœuds. **32 tests sur 33 passent automatiquement** (1 SKIP sur Win11 uniquement — limitation du client TLS système, validé manuellement via navigateur). Les critères de succès du POC sont tous atteints.
+
+**Score final :**
+- Win11 : **10/11 PASS** + 1 SKIP (validé manuellement)
+- Ubuntu : **11/11 PASS** — 0 SKIP
+- Kali : **11/11 PASS** — 0 SKIP
 
 **Points clés démontrés :**
 - Architecture **local-first** : chaque nœud est autonome et opérationnel hors réseau
 - **Réplication P2P** : données propagées automatiquement via Syncthing BEP/TLS 1.3
-- **Chiffrement end-to-end** : Fernet at-rest + mTLS en transit
-- **Consolidation analytique** : DuckDB agrège les données de tous les nœuds en une requête
+- **Chiffrement end-to-end** : Fernet at-rest + mTLS TLS 1.3 en transit (validé automatiquement sur Linux, manuellement sur Win11)
+- **Consolidation analytique** : DuckDB agrège 609 enregistrements de 16 tenants distincts en une requête
 - **Résilience** : 45h d'uptime continu sur Win11 sans intervention
 
 ---
