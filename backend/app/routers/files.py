@@ -56,7 +56,10 @@ def _owner_path(filename: str) -> str:
 
 def _read_owner(filename: str) -> str | None:
     p = _owner_path(filename)
-    return open(p).read().strip() if os.path.isfile(p) else None
+    if not os.path.isfile(p):
+        return None
+    content = open(p).read().strip()
+    return content or None
 
 
 def _file_info(path: str, name: str) -> dict:
@@ -95,12 +98,16 @@ def get_my_vault_key():
 def list_files():
     files = []
     for name in os.listdir(SHARED_STORAGE_PATH):
-        # Ignorer les fichiers de métadonnées internes
-        if name.endswith(_OWNER_EXT) or name.startswith("_"):
+        # Ignorer les fichiers de métadonnées internes et les fichiers système
+        if name.endswith(_OWNER_EXT) or name.startswith("_") or name.startswith("."):
             continue
         path = os.path.join(SHARED_STORAGE_PATH, name)
-        if os.path.isfile(path):
-            files.append(_file_info(path, name))
+        if not os.path.isfile(path):
+            continue
+        # N'afficher que les fichiers gérés par le coffre-fort (ayant un .sda-owner)
+        if not os.path.isfile(_owner_path(name)):
+            continue
+        files.append(_file_info(path, name))
     return sorted(files, key=lambda x: x["modified"], reverse=True)
 
 
