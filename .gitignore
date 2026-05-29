@@ -35,6 +35,9 @@ data/shared_storage/.stfolder/
 data/shared_storage/.sync-conflict-*
 data/shared_storage/*.txt
 data/shared_storage/*.bin
+data/shared_storage/*.png
+data/shared_storage/*.jpg
+data/shared_storage/*.jpeg
 # Clé Fernet auto-générée du coffre-fort (ne jamais versionner)
 data/db/.node_vault_key
 
