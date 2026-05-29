@@ -125,27 +125,22 @@ sda-nginx       Up X minutes
 sda-syncthing   Up X minutes (healthy)
 ```
 
-### 6. Injection de la clé API Syncthing dans nginx
+### 6. Injection de la clé API Syncthing dans nginx — **Automatique depuis v0.2**
 
-> **Contexte :** nginx proxifie les appels Syncthing depuis le frontend. L'API Syncthing exige le header `X-API-Key` pour toute requête. Comme chaque nœud génère sa propre clé, celle-ci est injectée via un fichier local non versionné.
+> **Mécanisme :** `scripts/nginx-entrypoint.sh` est exécuté par le conteneur nginx au démarrage.
+> Il lit la clé API directement depuis `config/syncthing/config.xml` (monté en volume),
+> écrit `config/nginx/certs/syncthing-key.conf`, puis lance nginx. Aucune action manuelle.
 
+**Vérification que l'injection a bien eu lieu :**
 ```bash
-# Depuis le répertoire sda-prototype/
-bash scripts/setup-syncthing-key.sh
+docker compose logs nginx | grep "Clé injectée"
+# → [sda-nginx] Clé injectée (FhrJ56rU...)
 ```
 
-Ce script :
-1. Extrait la clé API depuis `/var/syncthing/config/config.xml` dans le conteneur `sda-syncthing`
-2. Écrit `proxy_set_header X-API-Key "xxxxx";` dans `config/nginx/certs/syncthing-key.conf`
-3. Recharge nginx à chaud via `nginx -s reload` (sans downtime)
+Le dashboard frontend affiche les métriques Syncthing dès le démarrage complet du stack.
 
-> **Important :** relancer ce script après tout `docker compose up --force-recreate` car Syncthing peut régénérer sa clé.
-
-**Vérification :**
-```bash
-# Le dashboard frontend doit afficher les métriques Syncthing sans erreur
-# "Impossible de joindre Syncthing" → doit disparaître après ce script
-```
+> **Note historique :** avant la v0.2, cette étape nécessitait `bash scripts/setup-syncthing-key.sh`.
+> Ce script est conservé pour usage debug/maintenance mais n'est plus requis au déploiement normal.
 
 ---
 
@@ -201,7 +196,7 @@ Mot de passe      : <mot de passe fort — min. 12 car., maj+min+chiffres+spéci
 | Élément | Statut |
 |---------|--------|
 | GUI accessible | ✅ `http://localhost:8384` |
-| ID complet | *(récupérer via `bash scripts/setup-syncthing-key.sh` ou GUI)* |
+| ID complet | *(récupérer via `http://localhost:8384` → Actions → Voir l'ID)* |
 | Dossier `SDA_Shared` ajouté | ✅ `/var/syncthing/SDA_Shared` |
 | Mot de passe GUI configuré | ✅ Configuré (`sda-admin-ubuntu`) |
 | Couplage avec Node 1 Win11 | ⏳ À faire |
@@ -325,16 +320,15 @@ volumes:
 ### P4 — "Impossible de joindre Syncthing" dans le dashboard frontend
 
 **Symptôme :** Dashboard frontend → `Impossible de joindre Syncthing. Vérifiez que le conteneur est démarré.`  
-**Cause :** En supprimant `SYNCTHING_API_KEY` de docker-compose (fix P3), nginx n'injectait plus le header `X-API-Key` requis par l'API Syncthing → retour HTTP 403 systématique.  
-**Solution :** Mécanisme `include` nginx par nœud :
-- `config/nginx/nginx.conf.template` inclut `include /etc/nginx/certs/syncthing-key.conf;`
-- `scripts/setup-syncthing-key.sh` extrait la clé du conteneur et remplit ce fichier localement
-- Le fichier `syncthing-key.conf` n'est pas commité avec la vraie clé (clé node-specific)
+**Cause initiale (v0.1) :** nginx n'injectait pas le header `X-API-Key` requis par l'API Syncthing — la clé était node-specific et devait être injectée manuellement.  
+**Solution v0.1 (manuelle) :** `bash scripts/setup-syncthing-key.sh`
 
-```bash
-bash scripts/setup-syncthing-key.sh
-# → clé extraite + nginx rechargé à chaud
-```
+**Solution v0.2 (automatique) :** `scripts/nginx-entrypoint.sh` est monté dans le conteneur nginx et s'exécute au démarrage. Il lit `config/syncthing/config.xml` (volume partagé) pour extraire la clé sans `docker exec`, l'écrit dans `syncthing-key.conf`, puis démarre nginx. Nginx attend que Syncthing soit `healthy` via `depends_on: condition: service_healthy`.
+
+Architecture permanente :
+- `config/nginx/certs/syncthing-key.conf` → exclu de git (`.gitignore`) — node-specific, généré auto.
+- `config/nginx/nginx.conf.template` → `include syncthing-key.conf*` (glob, non-bloquant si absent)
+- `scripts/nginx-entrypoint.sh` → point d'entrée nginx, versionné, commun à tous les nœuds
 
 ---
 
@@ -346,7 +340,7 @@ bash scripts/setup-syncthing-key.sh
 | `sda-nginx` s'arrête en boucle | Certificats TLS absents | Vérifier `config/nginx/certs/` — relancer `bash scripts/generate-certs.sh` |
 | Port `8000` inaccessible depuis l'hôte | Design intentionnel — non exposé | Utiliser `docker compose exec sda-backend curl` ou passer par Nginx |
 | Syncthing ne voit pas les autres nœuds | Port 22000 bloqué sur `ens37` | Vérifier `ufw` et la connectivité `ping 192.168.200.1` |
-| "Impossible de joindre Syncthing" après recreate | `syncthing-key.conf` périmé | Relancer `bash scripts/setup-syncthing-key.sh` |
+| "Impossible de joindre Syncthing" après recreate | nginx n'a pas encore démarré / Syncthing pas healthy | `docker compose logs nginx` — la clé est réinjectée auto. au prochain démarrage nginx |
 
 ---
 

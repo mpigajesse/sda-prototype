@@ -107,17 +107,21 @@ source scripts/sda-aliases.sh
 echo 'source ~/PFE/sda-prototype/scripts/sda-aliases.sh' >> ~/.zshrc
 ```
 
-### 6. Injection de la clé API Syncthing dans nginx
+### 6. Injection de la clé API Syncthing dans nginx — **Automatique depuis v0.2**
 
-> **Contexte :** Même procédure que sur tous les nœuds — la clé API Syncthing est node-specific et doit être injectée localement dans nginx.
+La clé API Syncthing est désormais injectée automatiquement par `scripts/nginx-entrypoint.sh`
+au démarrage du conteneur nginx. Aucune action manuelle requise.
 
+**Vérification :**
 ```bash
-bash scripts/setup-syncthing-key.sh
+docker compose logs nginx | grep "Clé injectée"
+# → [sda-nginx] Clé injectée (xxxxxxxx...)
 ```
 
-**Vérification :** accéder à `https://localhost/` → le bloc Syncthing du dashboard doit afficher les métriques (uptime, mémoire, pairs) sans l'erreur "Impossible de joindre Syncthing".
+Accéder à `https://localhost/` → le dashboard affiche les métriques Syncthing sans erreur.
 
-> Relancer après tout `docker compose up --force-recreate`.
+> **Historique :** avant la v0.2, cette étape nécessitait `bash scripts/setup-syncthing-key.sh`
+> (relancé après chaque `docker compose up --force-recreate`). Désormais automatisé.
 
 ### 7. Validation finale
 

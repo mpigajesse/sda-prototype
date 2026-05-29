@@ -226,11 +226,17 @@ Résultat attendu :
 
 ```
 NAME            STATUS
+sda-syncthing   Up X minutes (healthy)
 sda-backend     Up X minutes (healthy)
 sda-frontend    Up X minutes (healthy)
 sda-nginx       Up X minutes
-sda-syncthing   Up X minutes (healthy)
 ```
+
+> **Clé API Syncthing — injection automatique :**
+> Le conteneur nginx attend que Syncthing soit `healthy`, puis `scripts/nginx-entrypoint.sh`
+> lit la clé API depuis `config/syncthing/config.xml` et l'injecte avant de lancer nginx.
+> Vérifier avec `docker compose logs nginx | grep "Clé injectée"`.
+> **Aucune action manuelle requise** — le dashboard frontend affiche les métriques Syncthing dès le démarrage.
 
 ---
 
@@ -598,7 +604,8 @@ newgrp docker
 
 Cocher chaque point avant de déclarer le nœud opérationnel :
 
-- [ ] `docker compose ps` → 4 conteneurs en état `healthy`
+- [ ] `docker compose ps` → 4 conteneurs démarrés, 3 en état `healthy` (nginx n'a pas de healthcheck)
+- [ ] `docker compose logs nginx | grep "Clé injectée"` → clé API Syncthing injectée automatiquement
 - [ ] `GET http://localhost:8000/health` → `{"status": "operational"}`
 - [ ] `POST /api/v1/data/ingest` → retourne un `record_hash`
 - [ ] `http://localhost:8384` → Syncthing GUI accessible

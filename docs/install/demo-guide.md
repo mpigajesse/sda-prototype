@@ -169,18 +169,22 @@ EOF
 
 ```bash
 docker compose up --build -d
-sleep 30
 docker compose ps
 ```
 
-### 3.4 Injection clé API Syncthing
+> **Injection de la clé API Syncthing — entièrement automatique** depuis la v0.2.
+> Le conteneur nginx attend que Syncthing soit `healthy`, lit la clé API depuis
+> `config/syncthing/config.xml` (volume partagé), l'injecte dans sa config, puis démarre.
+> Aucune action manuelle requise.
 
-```bash
-bash scripts/setup-syncthing-key.sh
-# → extrait la clé de sda-syncthing + recharge nginx à chaud
+Résultat attendu :
 ```
-
-### 3.5 Vérification
+NAME            STATUS
+sda-syncthing   Up X min (healthy)
+sda-backend     Up X min (healthy)
+sda-frontend    Up X min (healthy)
+sda-nginx       Up X min
+```
 
 ```bash
 curl -k https://localhost/health
@@ -226,9 +230,10 @@ nano .env   # coller les mêmes clés que Node 1
 
 ```bash
 docker compose --env-file .env up --build -d
-sleep 30
 docker compose ps
 ```
+
+> Même que Node 2 — la clé API Syncthing est injectée automatiquement au démarrage nginx.
 
 ### 4.4 Vérification
 
@@ -485,7 +490,7 @@ Infrastructure
 [ ] Node 1 Win11   : docker compose ps → tous healthy         ✓/✗  ← ✅ validé
 [ ] Node 2 Ubuntu  : docker compose ps → tous healthy         ✓/✗  ← ✅ validé
 [ ] Node 3 Kali    : docker compose ps → tous healthy         ✓/✗  ← ✅ validé
-[ ] setup-syncthing-key.sh lancé sur chaque nœud              ✓/✗  ← ✅ validé
+[ ] Clé API Syncthing injectée auto. (logs nginx : "Clé injectée") ✓/✗  ← ✅ automatique v0.2
 [ ] Dashboard Syncthing — métriques visibles (pas d'erreur)   ✓/✗  ← ✅ validé
 [ ] Syncthing maillage : 3 nœuds "Connecté" dans GUI          ✓/✗  ← ⏳ à faire
 
@@ -516,7 +521,7 @@ Interface
 | Symptôme | Cause | Solution |
 |----------|-------|----------|
 | VM ne joint pas Node 1 | Pare-feu Win11 | Exécuter les règles PowerShell du §2 |
-| "Impossible de joindre Syncthing" | clé API manquante dans nginx | `bash scripts/setup-syncthing-key.sh` |
+| "Impossible de joindre Syncthing" | nginx pas encore démarré ou Syncthing pas healthy | `docker compose logs nginx` — vérifier "Clé injectée" |
 | `docker-compose-plugin not found` sur Ubuntu | Dépôt Docker absent | Ajouter le dépôt officiel Docker (§3.1) |
 | `newgrp: not found` sur Ubuntu | `util-linux-extra` absent | `sudo apt install util-linux-extra` |
 | `502 Bad Gateway` sur `/` | Frontend non démarré | `docker compose logs sda-frontend` |
