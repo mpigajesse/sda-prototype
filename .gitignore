@@ -33,8 +33,16 @@ data/shared_storage/*.parquet.enc
 data/shared_storage/*.sda-owner
 data/shared_storage/.stfolder/
 data/shared_storage/.sync-conflict-*
+data/shared_storage/*.txt
+data/shared_storage/*.bin
 # Clé Fernet auto-générée du coffre-fort (ne jamais versionner)
 data/db/.node_vault_key
+
+# ---------------------------------------------------------------------------
+# Outils internes — session AgentHub
+# ---------------------------------------------------------------------------
+.agenthub/
+,
 # Garder les placeholders vides
 !data/db/.gitkeep
 !data/shared_storage/.gitkeep

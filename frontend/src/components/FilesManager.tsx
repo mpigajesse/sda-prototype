@@ -26,7 +26,7 @@ function fileIcon(mime: string, name: string) {
   if (mime.includes('csv') || mime.includes('spreadsheet') || name.endsWith('.csv') || name.endsWith('.xlsx'))
     return <FileSpreadsheet size={16} className="text-emerald-400" />
   if (mime.includes('parquet') || name.endsWith('.parquet'))
-    return <HardDrive size={16} className="text-blue-400" />
+    return <HardDrive size={16} className="text-[#C79A1B]" />
   return <File size={16} className="text-slate-400" />
 }
 
@@ -82,8 +82,8 @@ function UnlockModal({ filename, ownerNode, onClose }: UnlockModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-      <div className="w-full max-w-md bg-[#161b22] border border-[#30363d] rounded-2xl shadow-2xl p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
+      <div className="w-full max-w-md bg-gradient-to-br from-[#1a2030] to-[#161b22] rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] p-6">
         <div className="flex items-start justify-between mb-5">
           <div>
             <h2 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
@@ -97,7 +97,7 @@ function UnlockModal({ filename, ownerNode, onClose }: UnlockModalProps) {
           </button>
         </div>
 
-        <div className="mb-4 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-400">
+        <div className="mb-4 px-3 py-2 bg-amber-500/10 rounded-xl text-xs text-amber-400">
           Ce fichier appartient au nœud <span className="font-semibold font-mono">{ownerNode}</span>.
           Demandez sa clé de coffre-fort et collez-la ci-dessous.
         </div>
@@ -109,7 +109,7 @@ function UnlockModal({ filename, ownerNode, onClose }: UnlockModalProps) {
             value={key}
             onChange={(e) => setKey(e.target.value)}
             placeholder="Collez la clé ici…"
-            className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 pr-10 text-xs font-mono text-slate-300 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+            className="w-full bg-[#0d1117] rounded-xl px-3 py-2.5 pr-10 text-xs font-mono text-slate-300 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-[#C79A1B]/50 transition-all shadow-[inset_0_1px_6px_rgba(0,0,0,0.3)]"
           />
           <button
             type="button"
@@ -130,14 +130,14 @@ function UnlockModal({ filename, ownerNode, onClose }: UnlockModalProps) {
         <div className="flex gap-3 mt-5">
           <button
             onClick={onClose}
-            className="flex-1 py-2 rounded-lg border border-[#30363d] text-xs text-slate-400 hover:text-slate-200 hover:bg-[#21262d] transition-colors"
+            className="flex-1 py-2 rounded-xl bg-[#0d1117]/60 text-xs text-slate-400 hover:text-slate-200 hover:bg-[#21262d] transition-colors"
           >
             Annuler
           </button>
           <button
             onClick={() => void handleDownload()}
             disabled={downloading || !key.trim()}
-            className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-xs text-white font-medium transition-colors flex items-center justify-center gap-2"
+            className="flex-1 py-2 rounded-xl bg-[#B3121B] hover:bg-[#8E0E15] disabled:opacity-50 text-xs text-white font-medium transition-colors flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(179,18,27,0.3)]"
           >
             {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
             Déchiffrer & Télécharger
@@ -164,11 +164,11 @@ function MyKeyPanel({ info }: MyKeyPanelProps) {
   }
 
   return (
-    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+    <div className="rounded-xl bg-emerald-500/5 p-4 shadow-[0_0_24px_rgba(52,211,153,0.05),inset_0_1px_0_rgba(52,211,153,0.1)]">
       <div className="flex items-center gap-2 mb-3">
         <Key size={14} className="text-emerald-400 shrink-0" />
         <span className="text-xs font-semibold text-emerald-400">Ma clé de coffre-fort</span>
-        <span className="ml-auto font-mono text-[10px] bg-[#161b22] border border-white/5 px-2 py-0.5 rounded-full text-slate-500">
+        <span className="ml-auto font-mono text-[10px] bg-[#0d1117]/60 px-2 py-0.5 rounded-full text-slate-500">
           {info.node_name}
         </span>
       </div>
@@ -176,19 +176,19 @@ function MyKeyPanel({ info }: MyKeyPanelProps) {
         Partagez cette clé avec un pair pour qu'il puisse déchiffrer vos fichiers depuis son nœud.
       </p>
       <div className="flex items-center gap-2">
-        <div className="flex-1 bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 font-mono text-[11px] text-slate-400 overflow-hidden">
+        <div className="flex-1 bg-[#0d1117]/70 rounded-xl px-3 py-2 font-mono text-[11px] text-slate-400 overflow-hidden shadow-[inset_0_1px_6px_rgba(0,0,0,0.3)]">
           {revealed ? info.vault_key : '••••••••••••••••••••••••••••••••••••••••••••'}
         </div>
         <button
           onClick={() => setRevealed((v) => !v)}
-          className="shrink-0 p-2 rounded-lg border border-[#30363d] text-slate-500 hover:text-slate-300 hover:bg-[#161b22] transition-colors"
+          className="shrink-0 p-2 rounded-xl text-slate-500 hover:text-slate-300 hover:bg-[#161b22] transition-colors"
           title={revealed ? 'Masquer' : 'Afficher'}
         >
           {revealed ? <EyeOff size={13} /> : <Eye size={13} />}
         </button>
         <button
           onClick={copy}
-          className="shrink-0 p-2 rounded-lg border border-[#30363d] text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-colors"
+          className="shrink-0 p-2 rounded-xl text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
           title="Copier la clé"
         >
           {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
@@ -307,10 +307,11 @@ export function FilesManager() {
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
         className={[
-          'relative border-2 border-dashed rounded-xl px-6 py-10 text-center cursor-pointer transition-all',
+          'relative rounded-xl px-6 py-10 text-center cursor-pointer transition-all',
           dragOver
-            ? 'border-blue-400 bg-blue-500/10'
-            : 'border-[#30363d] hover:border-slate-500 hover:bg-[#161b22]',
+            ? 'bg-[#C79A1B]/10 shadow-[0_0_0_2px_rgba(199,154,27,0.5),inset_0_0_40px_rgba(199,154,27,0.05)]'
+            : 'bg-gradient-to-br from-[#1a2030] to-[#161b22] shadow-[0_4px_24px_rgba(0,0,0,0.35)] hover:shadow-[0_4px_32px_rgba(0,0,0,0.45)]',
+          '[background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0.02)_0px,rgba(255,255,255,0.02)_1px,transparent_1px,transparent_8px)]',
         ].join(' ')}
       >
         <input
@@ -322,12 +323,14 @@ export function FilesManager() {
         />
         {uploading ? (
           <div className="flex flex-col items-center gap-3">
-            <Loader2 size={28} className="text-blue-400 animate-spin" />
+            <Loader2 size={28} className="text-[#C79A1B] animate-spin" />
             <p className="text-sm text-slate-400">Chiffrement et upload en cours…</p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-3">
-            <Upload size={28} className="text-slate-500" />
+            <div className="w-12 h-12 rounded-2xl bg-[#0d1117]/60 flex items-center justify-center shadow-[0_4px_16px_rgba(0,0,0,0.4)]">
+              <Upload size={22} className="text-slate-400" />
+            </div>
             <div>
               <p className="text-sm font-medium text-slate-300">
                 Glisser-déposer un fichier ici
@@ -342,7 +345,7 @@ export function FilesManager() {
 
       {/* Erreur globale */}
       {error && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
+        <div className="flex items-center gap-2 px-4 py-3 bg-red-500/10 rounded-xl text-red-400 text-sm shadow-[0_0_16px_rgba(239,68,68,0.08)]">
           <AlertCircle size={14} className="shrink-0" />
           {error}
         </div>
@@ -382,19 +385,25 @@ export function FilesManager() {
                 Aucun fichier uploadé depuis ce nœud.
               </p>
             ) : (
-              <div className="rounded-xl border border-emerald-500/20 overflow-hidden">
+              <div className="rounded-xl overflow-hidden bg-gradient-to-br from-[#1a2030] to-[#161b22] shadow-[0_4px_24px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(52,211,153,0.06)]">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-[#30363d] bg-emerald-500/5 text-left">
+                    <tr className="bg-emerald-500/5 text-left">
                       <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Fichier</th>
                       <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Taille</th>
                       <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Modifié</th>
                       <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#21262d]">
-                    {ownFiles.map((f) => (
-                      <tr key={f.name} className="hover:bg-[#161b22] transition-colors group">
+                  <tbody>
+                    {ownFiles.map((f, i) => (
+                      <tr
+                        key={f.name}
+                        className={[
+                          'hover:bg-emerald-500/5 transition-colors group',
+                          i > 0 ? 'border-t border-white/5' : '',
+                        ].join(' ')}
+                      >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5 min-w-0">
                             <LockOpen size={12} className="text-emerald-500 shrink-0" />
@@ -453,19 +462,25 @@ export function FilesManager() {
                 </span>
               </div>
 
-              <div className="rounded-xl border border-amber-500/20 overflow-hidden">
+              <div className="rounded-xl overflow-hidden bg-gradient-to-br from-[#1e1a14] to-[#161b22] shadow-[0_4px_24px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(251,191,36,0.06)]">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-[#30363d] bg-amber-500/5 text-left">
+                    <tr className="bg-amber-500/5 text-left">
                       <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Fichier</th>
                       <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Propriétaire</th>
                       <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Taille</th>
                       <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#21262d]">
-                    {foreignFiles.map((f) => (
-                      <tr key={f.name} className="hover:bg-[#161b22] transition-colors opacity-75 hover:opacity-100">
+                  <tbody>
+                    {foreignFiles.map((f, i) => (
+                      <tr
+                        key={f.name}
+                        className={[
+                          'hover:bg-amber-500/5 transition-colors opacity-75 hover:opacity-100',
+                          i > 0 ? 'border-t border-white/5' : '',
+                        ].join(' ')}
+                      >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5 min-w-0">
                             <Lock size={12} className="text-amber-500 shrink-0" />
@@ -474,7 +489,7 @@ export function FilesManager() {
                           </div>
                         </td>
                         <td className="px-4 py-3 hidden sm:table-cell">
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#21262d] border border-[#30363d] text-[10px] font-mono text-slate-400">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#21262d]/60 text-[10px] font-mono text-slate-400">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
                             {f.owner_node}
                           </span>
@@ -486,7 +501,7 @@ export function FilesManager() {
                           <button
                             type="button"
                             onClick={() => setUnlockTarget(f)}
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-colors"
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 transition-colors"
                             title="Déverrouiller avec la clé du propriétaire"
                           >
                             <Key size={11} />

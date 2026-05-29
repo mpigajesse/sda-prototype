@@ -19,7 +19,7 @@ function SyncProgressBar({ inSyncFiles, localFiles, hasError }: {
   const pct = Math.round((inSyncFiles / Math.max(localFiles, 1)) * 100)
   const clampedPct = Math.min(100, Math.max(0, pct))
 
-  let barColor = 'bg-blue-500'
+  let barColor = 'bg-[#C79A1B]'
   if (hasError) barColor = 'bg-red-500'
   else if (clampedPct === 100) barColor = 'bg-emerald-500'
 
@@ -27,7 +27,7 @@ function SyncProgressBar({ inSyncFiles, localFiles, hasError }: {
     <div className="mt-4">
       <div className="flex justify-between items-center mb-1.5">
         <span className="text-sm text-slate-400">Progression sync</span>
-        <span className={`text-sm font-semibold ${hasError ? 'text-red-400' : clampedPct === 100 ? 'text-emerald-400' : 'text-blue-400'}`}>
+        <span className={`text-sm font-semibold ${hasError ? 'text-red-400' : clampedPct === 100 ? 'text-emerald-400' : 'text-[#C79A1B]'}`}>
           {clampedPct}%
         </span>
       </div>
@@ -43,7 +43,7 @@ function SyncProgressBar({ inSyncFiles, localFiles, hasError }: {
 
 function SkeletonCard() {
   return (
-    <div className="bg-[#161b22] rounded-xl p-5 animate-pulse">
+    <div className="bg-gradient-to-br from-[#1a2030] to-[#161b22] rounded-xl p-5 animate-pulse shadow-[0_4px_24px_rgba(0,0,0,0.35)]">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 flex-1">
           <div className="w-5 h-5 rounded bg-[#30363d] shrink-0" />
@@ -70,7 +70,7 @@ function SkeletonCard() {
 
 function EmptyState() {
   return (
-    <div className="bg-[#161b22] rounded-xl p-10 text-center">
+    <div className="bg-gradient-to-br from-[#1a2030] to-[#161b22] rounded-xl p-10 text-center shadow-[0_4px_24px_rgba(0,0,0,0.35)]">
       <svg
         className="mx-auto mb-5 text-slate-600"
         width="56" height="56" viewBox="0 0 24 24"
@@ -89,7 +89,7 @@ function EmptyState() {
         href="http://localhost:8384"
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors border border-blue-400/30 hover:border-blue-300/50 rounded-lg px-4 py-2"
+        className="inline-flex items-center gap-2 text-sm text-[#C79A1B] hover:text-[#D8AE35] transition-colors hover:bg-[#C79A1B]/10 rounded-xl px-4 py-2"
       >
         <FolderSync size={14} />
         Ouvrir Syncthing GUI
@@ -157,12 +157,12 @@ export function FolderList({ folders, loading }: Props) {
         return (
           <div
             key={folder.id}
-            className="bg-[#161b22] rounded-xl overflow-hidden"
+            className="bg-gradient-to-br from-[#1a2030] to-[#161b22] rounded-xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.35)]"
           >
             {/* Header — click to expand */}
             <button
               type="button"
-              className="w-full text-left px-5 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
+              className="w-full text-left px-5 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C79A1B]/50"
               onClick={() => toggleExpand(folder.id)}
               aria-expanded={isExpanded}
               aria-controls={`folder-details-${folder.id}`}
@@ -170,7 +170,7 @@ export function FolderList({ folders, loading }: Props) {
               <div className="flex items-start justify-between gap-3">
                 {/* Left */}
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <FolderSync size={18} className="text-blue-400 shrink-0" />
+                  <FolderSync size={18} className="text-[#C79A1B] shrink-0" />
                   <span className="text-base font-semibold text-[#e6edf3] truncate">
                     {folder.label || folder.id}
                   </span>
@@ -186,7 +186,7 @@ export function FolderList({ folders, loading }: Props) {
                 {/* Right */}
                 <div className="flex items-center gap-2 shrink-0">
                   {s && (s.errors ?? 0) > 0 && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-500/15 border border-red-500/30 text-red-400 text-xs font-medium">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-500/15 text-red-400 text-xs font-medium">
                       ⚠ {s.errors} conflit{(s.errors ?? 0) > 1 ? 's' : ''}
                     </span>
                   )}
@@ -217,7 +217,7 @@ export function FolderList({ folders, loading }: Props) {
 
             {/* Pending files */}
             {s && s.needFiles > 0 && (
-              <div className="mx-5 mb-3 flex items-center gap-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20 px-4 py-2.5">
+              <div className="mx-5 mb-3 flex items-center gap-2 rounded-xl bg-yellow-500/10 px-4 py-2.5">
                 <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse shrink-0" aria-hidden="true" />
                 <span className="text-sm text-yellow-300">
                   {s.needFiles} fichier{s.needFiles > 1 ? 's' : ''} en attente de synchronisation
@@ -231,23 +231,26 @@ export function FolderList({ folders, loading }: Props) {
               className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}
             >
               {s && (
-                <div className="px-5 pt-4 pb-5 border-t border-white/5">
+                <div className="px-5 pt-4 pb-5">
+                  {/* Subtle separator */}
+                  <div className="h-px bg-gradient-to-r from-transparent via-white/8 to-transparent mb-4" />
+
                   {/* Stats grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    <div className="text-center bg-[#0d1117] rounded-lg py-3">
+                    <div className="text-center bg-[#0d1117]/70 rounded-xl py-3 shadow-[inset_0_1px_6px_rgba(0,0,0,0.2)]">
                       <div className="text-xl font-bold text-[#e6edf3]">
                         {s.localFiles.toLocaleString()}
                       </div>
                       <div className="text-slate-500 text-sm mt-1">Fichiers locaux</div>
                     </div>
-                    <div className="text-center bg-[#0d1117] rounded-lg py-3">
+                    <div className="text-center bg-[#0d1117]/70 rounded-xl py-3 shadow-[inset_0_1px_6px_rgba(0,0,0,0.2)]">
                       <div className="text-xl font-bold text-emerald-400">
                         {s.inSyncFiles.toLocaleString()}
                       </div>
                       <div className="text-slate-500 text-sm mt-1">Synchronisés</div>
                     </div>
-                    <div className="text-center bg-[#0d1117] rounded-lg py-3 col-span-2 sm:col-span-1">
-                      <div className="text-xl font-bold text-blue-400">
+                    <div className="text-center bg-[#0d1117]/70 rounded-xl py-3 col-span-2 sm:col-span-1 shadow-[inset_0_1px_6px_rgba(0,0,0,0.2)]">
+                      <div className="text-xl font-bold text-[#C79A1B]">
                         {formatBytes(s.localBytes)}
                       </div>
                       <div className="text-slate-500 text-sm mt-1">Taille totale</div>
@@ -257,7 +260,7 @@ export function FolderList({ folders, loading }: Props) {
                   {/* Full path */}
                   <div className="mt-4">
                     <p className="text-sm font-medium text-slate-500 mb-1.5">Chemin complet</p>
-                    <p className="font-mono text-sm text-slate-300 bg-[#0d1117] rounded-lg px-3 py-2 break-all">
+                    <p className="font-mono text-sm text-slate-300 bg-[#0d1117]/70 rounded-xl px-3 py-2 break-all shadow-[inset_0_1px_6px_rgba(0,0,0,0.2)]">
                       {folder.path}
                     </p>
                   </div>
@@ -265,7 +268,7 @@ export function FolderList({ folders, loading }: Props) {
                   {/* Folder ID */}
                   <div className="mt-2">
                     <p className="text-sm font-medium text-slate-500 mb-1">Identifiant Syncthing</p>
-                    <p className="font-mono text-sm text-slate-400 bg-[#0d1117] rounded-lg px-3 py-2 break-all">
+                    <p className="font-mono text-sm text-slate-400 bg-[#0d1117]/70 rounded-xl px-3 py-2 break-all shadow-[inset_0_1px_6px_rgba(0,0,0,0.2)]">
                       {folder.id}
                     </p>
                   </div>

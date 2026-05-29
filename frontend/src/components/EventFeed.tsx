@@ -10,7 +10,8 @@ type Category = 'all' | 'files' | 'network' | 'system'
 interface EventConfig {
   label: string
   icon: React.ReactNode
-  borderColor: string
+  accentBg: string
+  accentGlow: string
 }
 
 const FILE_EVENTS = new Set([
@@ -30,23 +31,23 @@ function getCategory(type: string): Exclude<Category, 'all'> {
 function getEventConfig(type: string): EventConfig {
   switch (type) {
     case 'StateChanged':
-      return { label: 'État modifié', icon: <FolderSync size={14} />, borderColor: 'border-blue-500' }
+      return { label: 'État modifié', icon: <FolderSync size={14} />, accentBg: 'bg-[#C79A1B]', accentGlow: 'shadow-[0_0_8px_rgba(199,154,27,0.5)]' }
     case 'LocalChangeDetected':
-      return { label: 'Fichier modifié', icon: <FileText size={14} />, borderColor: 'border-emerald-500' }
+      return { label: 'Fichier modifié', icon: <FileText size={14} />, accentBg: 'bg-emerald-500', accentGlow: 'shadow-[0_0_8px_rgba(52,211,153,0.4)]' }
     case 'RemoteChangeDetected':
-      return { label: 'Changement pair', icon: <ArrowDownToLine size={14} />, borderColor: 'border-emerald-500' }
+      return { label: 'Changement pair', icon: <ArrowDownToLine size={14} />, accentBg: 'bg-emerald-500', accentGlow: 'shadow-[0_0_8px_rgba(52,211,153,0.4)]' }
     case 'ItemFinished':
-      return { label: 'Sync OK', icon: <CheckCircle2 size={14} />, borderColor: 'border-emerald-500' }
+      return { label: 'Sync OK', icon: <CheckCircle2 size={14} />, accentBg: 'bg-emerald-500', accentGlow: 'shadow-[0_0_8px_rgba(52,211,153,0.4)]' }
     case 'FolderSyncProgress':
-      return { label: 'Progression sync', icon: <FolderSync size={14} />, borderColor: 'border-blue-500' }
+      return { label: 'Progression sync', icon: <FolderSync size={14} />, accentBg: 'bg-[#C79A1B]', accentGlow: 'shadow-[0_0_8px_rgba(199,154,27,0.5)]' }
     case 'DeviceConnected':
-      return { label: 'Pair connecté', icon: <Wifi size={14} />, borderColor: 'border-emerald-500' }
+      return { label: 'Pair connecté', icon: <Wifi size={14} />, accentBg: 'bg-emerald-500', accentGlow: 'shadow-[0_0_8px_rgba(52,211,153,0.4)]' }
     case 'DeviceDisconnected':
-      return { label: 'Pair déconnecté', icon: <WifiOff size={14} />, borderColor: 'border-red-500' }
+      return { label: 'Pair déconnecté', icon: <WifiOff size={14} />, accentBg: 'bg-red-500', accentGlow: 'shadow-[0_0_8px_rgba(239,68,68,0.4)]' }
     case 'ConfigSaved':
-      return { label: 'Config sauvée', icon: <Settings size={14} />, borderColor: 'border-slate-500' }
+      return { label: 'Config sauvée', icon: <Settings size={14} />, accentBg: 'bg-slate-500', accentGlow: '' }
     default:
-      return { label: type, icon: <Activity size={14} />, borderColor: 'border-slate-600' }
+      return { label: type, icon: <Activity size={14} />, accentBg: 'bg-slate-600', accentGlow: '' }
   }
 }
 
@@ -70,7 +71,7 @@ function FilterButton({ label, active, onClick }: FilterButtonProps) {
       className={[
         'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
         active
-          ? 'bg-[#30363d] text-[#e6edf3]'
+          ? 'bg-[#30363d]/80 text-[#e6edf3] shadow-[0_1px_6px_rgba(0,0,0,0.3)]'
           : 'text-slate-500 hover:text-slate-300',
       ].join(' ')}
     >
@@ -134,10 +135,10 @@ export function EventFeed() {
         .feed-scroll::-webkit-scrollbar-thumb:hover { background: #484f58; }
       `}</style>
 
-      <div className="bg-[#161b22] rounded-xl overflow-hidden">
+      <div className="bg-gradient-to-br from-[#1a2030] to-[#161b22] rounded-xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.35)]">
 
         {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-white/5">
+        <div className="flex items-center gap-3 px-5 py-4">
           <Activity size={15} className="text-slate-400" />
           <span className="text-sm font-semibold text-slate-300 uppercase tracking-widest">
             Activité récente
@@ -146,14 +147,17 @@ export function EventFeed() {
             LIVE
           </span>
           {totalCount.current > 0 && (
-            <span className="ml-auto bg-[#30363d] text-slate-300 text-sm px-2.5 py-0.5 rounded-full font-medium tabular-nums">
+            <span className="ml-auto bg-[#30363d]/80 text-slate-300 text-sm px-2.5 py-0.5 rounded-full font-medium tabular-nums">
               {totalCount.current}
             </span>
           )}
         </div>
 
+        {/* Subtle separator */}
+        <div className="mx-5 h-px bg-gradient-to-r from-transparent via-white/8 to-transparent" />
+
         {/* Filters */}
-        <div className="flex items-center gap-1 px-5 py-3 border-b border-white/5">
+        <div className="flex items-center gap-1 px-4 py-3">
           {categories.map(({ key, label }) => (
             <FilterButton
               key={key}
@@ -164,8 +168,11 @@ export function EventFeed() {
           ))}
         </div>
 
+        {/* Subtle separator */}
+        <div className="mx-5 h-px bg-gradient-to-r from-transparent via-white/8 to-transparent" />
+
         {/* Event list */}
-        <div className="feed-scroll divide-y divide-white/5 max-h-96 overflow-y-auto">
+        <div className="feed-scroll max-h-96 overflow-y-auto">
           {filtered.length === 0 && (
             <div className="px-5 py-10 text-center text-slate-500 text-sm">
               {events.length === 0
@@ -182,14 +189,11 @@ export function EventFeed() {
             return (
               <div
                 key={evt.id}
-                className={[
-                  'event-item',
-                  'flex items-center gap-3 px-5 py-3',
-                  'border-l-2',
-                  cfg.borderColor,
-                  'hover:bg-[#0d1117]/50 transition-colors',
-                ].join(' ')}
+                className="event-item relative flex items-center gap-3 px-5 py-3 hover:bg-[#0d1117]/40 transition-colors"
               >
+                {/* Left accent strip */}
+                <span className={`absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full ${cfg.accentBg} ${cfg.accentGlow}`} />
+
                 <span className="text-slate-400 shrink-0">{cfg.icon}</span>
                 <span className="text-sm font-medium text-slate-200 shrink-0">{cfg.label}</span>
                 {(folder || item) && (

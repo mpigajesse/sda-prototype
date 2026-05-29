@@ -69,13 +69,13 @@ function signalBarsFor(kind: ConnectionKind): number {
 function kindBadgeClass(kind: ConnectionKind): string {
   switch (kind) {
     case 'QUIC':
-      return 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+      return 'bg-emerald-500/10 text-emerald-300'
     case 'TCP':
-      return 'bg-sky-500/10 text-sky-300 border-sky-500/30'
+      return 'bg-sky-500/10 text-sky-300'
     case 'Relay':
-      return 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+      return 'bg-amber-500/10 text-amber-300'
     default:
-      return 'bg-slate-500/10 text-slate-300 border-slate-500/30'
+      return 'bg-slate-500/10 text-slate-300'
   }
 }
 
@@ -116,16 +116,16 @@ function PeerAvatar({
     <div
       className={[
         'relative shrink-0 w-10 h-10 rounded-full flex items-center justify-center',
-        'font-semibold text-sm tracking-wide border transition-all',
+        'font-semibold text-sm tracking-wide transition-all',
         isConnected
-          ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/40 shadow-[0_0_0_3px_rgba(16,185,129,0.08)]'
-          : 'bg-slate-500/10 text-slate-400 border-slate-600/40',
+          ? 'bg-emerald-500/10 text-emerald-300 shadow-[0_0_0_3px_rgba(16,185,129,0.15),0_0_16px_rgba(16,185,129,0.1)]'
+          : 'bg-slate-500/10 text-slate-400',
       ].join(' ')}
     >
       {initials || <Monitor size={16} />}
       <span
         className={[
-          'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#161b22]',
+          'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full shadow-[0_0_0_2px_#161b22]',
           isConnected ? 'bg-emerald-400' : 'bg-slate-500',
         ].join(' ')}
         aria-hidden
@@ -136,7 +136,7 @@ function PeerAvatar({
 
 function EmptyState() {
   return (
-    <div className="bg-[#161b22] rounded-xl p-10 text-center">
+    <div className="bg-gradient-to-br from-[#1a2030] to-[#161b22] rounded-xl p-10 text-center shadow-[0_4px_24px_rgba(0,0,0,0.35)]">
       <div className="mx-auto mb-4 w-20 h-20 relative">
         <svg
           viewBox="0 0 80 80"
@@ -208,22 +208,25 @@ function PeerCard({ device, conn }: PeerCardProps) {
   return (
     <div
       className={[
-        'group relative overflow-hidden rounded-xl bg-[#161b22] transition-all',
+        'group relative overflow-hidden rounded-xl bg-gradient-to-br from-[#1a2030] to-[#161b22] transition-all shadow-[0_4px_24px_rgba(0,0,0,0.35)]',
         justConnected ? 'ring-2 ring-emerald-400/60 animate-pulse' : '',
       ].join(' ')}
     >
+      {/* Left accent strip */}
       <span
         aria-hidden
         className={[
-          'absolute left-0 top-0 bottom-0 w-1 transition-colors',
-          isConnected ? 'bg-emerald-400' : 'bg-slate-600',
+          'absolute left-0 top-0 bottom-0 w-[3px] rounded-r-sm transition-all',
+          isConnected
+            ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]'
+            : 'bg-slate-600',
         ].join(' ')}
       />
 
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="w-full text-left px-5 py-4"
+        className="w-full text-left pl-5 pr-4 py-4"
         aria-expanded={expanded}
       >
         <div className="flex items-center gap-3">
@@ -237,7 +240,7 @@ function PeerCard({ device, conn }: PeerCardProps) {
               {isConnected && (
                 <span
                   className={[
-                    'hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold border uppercase tracking-wide',
+                    'hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide',
                     kindBadgeClass(kind),
                   ].join(' ')}
                 >
@@ -289,7 +292,7 @@ function PeerCard({ device, conn }: PeerCardProps) {
 
         {isConnected && conn && (
           <div className="hidden sm:grid mt-3.5 grid-cols-2 gap-3">
-            <div className="bg-[#0d1117] rounded-lg px-5 py-3 flex items-center gap-2">
+            <div className="bg-[#0d1117]/60 rounded-xl px-5 py-3 flex items-center gap-2 shadow-[inset_0_1px_6px_rgba(0,0,0,0.2)]">
               <ArrowDown size={13} className="text-emerald-400 shrink-0" />
               <div className="min-w-0">
                 <div className="text-xs uppercase tracking-wider text-slate-500">
@@ -300,7 +303,7 @@ function PeerCard({ device, conn }: PeerCardProps) {
                 </div>
               </div>
             </div>
-            <div className="bg-[#0d1117] rounded-lg px-5 py-3 flex items-center gap-2">
+            <div className="bg-[#0d1117]/60 rounded-xl px-5 py-3 flex items-center gap-2 shadow-[inset_0_1px_6px_rgba(0,0,0,0.2)]">
               <ArrowUp size={13} className="text-sky-400 shrink-0" />
               <div className="min-w-0">
                 <div className="text-xs uppercase tracking-wider text-slate-500">
@@ -316,7 +319,10 @@ function PeerCard({ device, conn }: PeerCardProps) {
       </button>
 
       {expanded && (
-        <div className="border-t border-white/5 bg-[#0d1117]/60 px-5 pt-4 pb-5 space-y-4">
+        <div className="bg-[#0d1117]/50 px-5 pt-4 pb-5 space-y-4">
+          {/* Subtle separator */}
+          <div className="h-px bg-gradient-to-r from-transparent via-white/8 to-transparent -mx-5 mb-4" />
+
           <div>
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs uppercase tracking-wider text-slate-500">
@@ -385,7 +391,7 @@ function PeerCard({ device, conn }: PeerCardProps) {
 
           {isConnected && conn && (
             <div className="grid grid-cols-2 gap-2 sm:hidden pt-1">
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg px-2 py-1.5">
+              <div className="bg-[#161b22] rounded-xl px-2 py-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
                 <div className="text-[10px] text-slate-500 flex items-center gap-1">
                   <ArrowDown size={10} className="text-emerald-400" /> Recu
                 </div>
@@ -393,7 +399,7 @@ function PeerCard({ device, conn }: PeerCardProps) {
                   {formatBytes(conn.inBytesTotal)}
                 </div>
               </div>
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg px-2 py-1.5">
+              <div className="bg-[#161b22] rounded-xl px-2 py-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
                 <div className="text-[10px] text-slate-500 flex items-center gap-1">
                   <ArrowUp size={10} className="text-sky-400" /> Envoye
                 </div>
