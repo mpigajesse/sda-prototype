@@ -144,7 +144,7 @@ sda-parquet  # → node3_kali_storage.parquet créé
 | Dossier `SDA_Shared` ajouté | ✅ `/var/syncthing/SDA_Shared` |
 | Mot de passe GUI configuré | ✅ Configuré (`sda-admin-kali`) |
 | Couplage avec Node 1 Win11 | ✅ Connecté — réplication bidirectionnelle validée |
-| Couplage avec Node 2 Ubuntu | ⏳ À faire — IP LAN `192.168.200.130:22000` |
+| Couplage avec Node 2 Ubuntu | ✅ Connecté — réplication bidirectionnelle validée (2026-05-27) |
 
 ### Procédure de couplage
 

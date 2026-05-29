@@ -199,8 +199,8 @@ Mot de passe      : <mot de passe fort — min. 12 car., maj+min+chiffres+spéci
 | ID complet | *(récupérer via `http://localhost:8384` → Actions → Voir l'ID)* |
 | Dossier `SDA_Shared` ajouté | ✅ `/var/syncthing/SDA_Shared` |
 | Mot de passe GUI configuré | ✅ Configuré (`sda-admin-ubuntu`) |
-| Couplage avec Node 1 Win11 | ⏳ À faire |
-| Couplage avec Node 3 Kali | ⏳ À faire |
+| Couplage avec Node 1 Win11 | ✅ Connecté — réplication bidirectionnelle validée (2026-05-27) |
+| Couplage avec Node 3 Kali | ✅ Connecté — réplication bidirectionnelle validée (2026-05-27) |
 
 ### Procédure de couplage
 

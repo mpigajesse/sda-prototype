@@ -492,7 +492,7 @@ Infrastructure
 [ ] Node 3 Kali    : docker compose ps → tous healthy         ✓/✗  ← ✅ validé
 [ ] Clé API Syncthing injectée auto. (logs nginx : "Clé injectée") ✓/✗  ← ✅ automatique v0.2
 [ ] Dashboard Syncthing — métriques visibles (pas d'erreur)   ✓/✗  ← ✅ validé
-[ ] Syncthing maillage : 3 nœuds "Connecté" dans GUI          ✓/✗  ← ⏳ à faire
+[ ] Syncthing maillage : 3 nœuds "Connecté" dans GUI          ✓/✗  ← ✅ validé (2026-05-27)
 
 Fonctionnel
 [ ] Ingest Node 1 → succès (status:success)                   ✓/✗
