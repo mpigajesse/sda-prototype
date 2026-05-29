@@ -20,7 +20,7 @@ export function Layout() {
   const pageTitle = PAGE_TITLES[location.pathname] ?? 'SDA'
 
   return (
-    <div className="flex h-screen bg-[#10161e] text-[#e6edf3] overflow-hidden">
+    <div className="flex h-screen bg-[#0D0A07] text-[#e6edf3] overflow-hidden">
       <Sidebar
         sdaStatus={sdaStatus}
         version={version ? `Syncthing ${version}` : ''}
@@ -31,7 +31,7 @@ export function Layout() {
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top bar */}
-        <header className="shrink-0 h-12 bg-[#10161e]/95 backdrop-blur-md flex items-center px-4 sm:px-6 gap-3 border-b border-[#21262d]">
+        <header className="shrink-0 h-12 bg-[#0D0A07]/95 backdrop-blur-md flex items-center px-4 sm:px-6 gap-3 border-b border-[#2E1F14]">
           <div className="w-9 lg:hidden" />
           <h1 className="text-base font-semibold text-[#e6edf3] truncate">{pageTitle}</h1>
           <div className="ml-auto flex items-center gap-3 shrink-0">

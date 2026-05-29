@@ -19,10 +19,11 @@ function formatMem(bytes: number): string {
 
 function SectionLabel({ children, count }: { children: React.ReactNode; count?: number }) {
   return (
-    <div className="flex items-center justify-between mb-4">
-      <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-widest">{children}</h2>
+    <div className="flex items-center gap-3 mb-4">
+      <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-widest shrink-0">{children}</h2>
+      <div className="flex-1 h-px bg-gradient-to-r from-[#3D2A1E]/80 via-[#C79A1B]/10 to-transparent" />
       {count !== undefined && (
-        <span className="text-[10px] font-mono text-slate-600 bg-[#161b22] px-2 py-0.5 rounded-full shadow-[0_1px_4px_rgba(0,0,0,0.3)]">
+        <span className="text-[10px] font-mono text-slate-500 bg-[#161b22] px-2 py-0.5 rounded-full border border-[#30363d]/50 shrink-0">
           {count}
         </span>
       )}
@@ -97,7 +98,6 @@ export default function OverviewPage() {
 
       {/* ── Activité temps réel ─────────────────────────────── */}
       <div>
-        <SectionLabel>Activité récente</SectionLabel>
         <EventFeed />
       </div>
 

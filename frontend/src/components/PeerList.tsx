@@ -136,7 +136,7 @@ function PeerAvatar({
 
 function EmptyState() {
   return (
-    <div className="bg-gradient-to-br from-[#1a2030] to-[#161b22] rounded-xl p-10 text-center shadow-[0_4px_24px_rgba(0,0,0,0.35)]">
+    <div className="bg-gradient-to-br from-[#1C1208] to-[#150F0A] rounded-xl p-10 text-center shadow-[0_4px_24px_rgba(0,0,0,0.35)]">
       <div className="mx-auto mb-4 w-20 h-20 relative">
         <svg
           viewBox="0 0 80 80"
@@ -208,7 +208,7 @@ function PeerCard({ device, conn }: PeerCardProps) {
   return (
     <div
       className={[
-        'group relative overflow-hidden rounded-xl bg-gradient-to-br from-[#1a2030] to-[#161b22] transition-all shadow-[0_4px_24px_rgba(0,0,0,0.35)]',
+        'group relative overflow-hidden rounded-xl bg-gradient-to-br from-[#1C1208] to-[#150F0A] transition-all shadow-[0_4px_24px_rgba(0,0,0,0.35)]',
         justConnected ? 'ring-2 ring-emerald-400/60 animate-pulse' : '',
       ].join(' ')}
     >
@@ -292,7 +292,7 @@ function PeerCard({ device, conn }: PeerCardProps) {
 
         {isConnected && conn && (
           <div className="hidden sm:grid mt-3.5 grid-cols-2 gap-3">
-            <div className="bg-[#0d1117]/60 rounded-xl px-5 py-3 flex items-center gap-2 shadow-[inset_0_1px_6px_rgba(0,0,0,0.2)]">
+            <div className="bg-[#0C0705]/60 rounded-xl px-5 py-3 flex items-center gap-2 shadow-[inset_0_1px_6px_rgba(0,0,0,0.2)]">
               <ArrowDown size={13} className="text-emerald-400 shrink-0" />
               <div className="min-w-0">
                 <div className="text-xs uppercase tracking-wider text-slate-500">
@@ -303,7 +303,7 @@ function PeerCard({ device, conn }: PeerCardProps) {
                 </div>
               </div>
             </div>
-            <div className="bg-[#0d1117]/60 rounded-xl px-5 py-3 flex items-center gap-2 shadow-[inset_0_1px_6px_rgba(0,0,0,0.2)]">
+            <div className="bg-[#0C0705]/60 rounded-xl px-5 py-3 flex items-center gap-2 shadow-[inset_0_1px_6px_rgba(0,0,0,0.2)]">
               <ArrowUp size={13} className="text-sky-400 shrink-0" />
               <div className="min-w-0">
                 <div className="text-xs uppercase tracking-wider text-slate-500">
@@ -391,7 +391,7 @@ function PeerCard({ device, conn }: PeerCardProps) {
 
           {isConnected && conn && (
             <div className="grid grid-cols-2 gap-2 sm:hidden pt-1">
-              <div className="bg-[#161b22] rounded-xl px-2 py-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
+              <div className="bg-[#160A06] rounded-xl px-2 py-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
                 <div className="text-[10px] text-slate-500 flex items-center gap-1">
                   <ArrowDown size={10} className="text-emerald-400" /> Recu
                 </div>
@@ -399,7 +399,7 @@ function PeerCard({ device, conn }: PeerCardProps) {
                   {formatBytes(conn.inBytesTotal)}
                 </div>
               </div>
-              <div className="bg-[#161b22] rounded-xl px-2 py-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
+              <div className="bg-[#160A06] rounded-xl px-2 py-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
                 <div className="text-[10px] text-slate-500 flex items-center gap-1">
                   <ArrowUp size={10} className="text-sky-400" /> Envoye
                 </div>

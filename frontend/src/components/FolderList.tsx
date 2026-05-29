@@ -43,7 +43,7 @@ function SyncProgressBar({ inSyncFiles, localFiles, hasError }: {
 
 function SkeletonCard() {
   return (
-    <div className="bg-gradient-to-br from-[#1a2030] to-[#161b22] rounded-xl p-5 animate-pulse shadow-[0_4px_24px_rgba(0,0,0,0.35)]">
+    <div className="bg-gradient-to-br from-[#1C1208] to-[#150F0A] rounded-xl p-5 animate-pulse shadow-[0_4px_24px_rgba(0,0,0,0.35)]">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 flex-1">
           <div className="w-5 h-5 rounded bg-[#30363d] shrink-0" />
@@ -70,7 +70,7 @@ function SkeletonCard() {
 
 function EmptyState() {
   return (
-    <div className="bg-gradient-to-br from-[#1a2030] to-[#161b22] rounded-xl p-10 text-center shadow-[0_4px_24px_rgba(0,0,0,0.35)]">
+    <div className="bg-gradient-to-br from-[#1C1208] to-[#150F0A] rounded-xl p-10 text-center shadow-[0_4px_24px_rgba(0,0,0,0.35)]">
       <svg
         className="mx-auto mb-5 text-slate-600"
         width="56" height="56" viewBox="0 0 24 24"
@@ -157,7 +157,7 @@ export function FolderList({ folders, loading }: Props) {
         return (
           <div
             key={folder.id}
-            className="bg-gradient-to-br from-[#1a2030] to-[#161b22] rounded-xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.35)]"
+            className="bg-gradient-to-br from-[#1C1208] to-[#150F0A] rounded-xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.35)]"
           >
             {/* Header — click to expand */}
             <button
@@ -237,19 +237,19 @@ export function FolderList({ folders, loading }: Props) {
 
                   {/* Stats grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    <div className="text-center bg-[#0d1117]/70 rounded-xl py-3 shadow-[inset_0_1px_6px_rgba(0,0,0,0.2)]">
+                    <div className="text-center bg-[#0C0705]/70 rounded-xl py-3 shadow-[inset_0_1px_6px_rgba(0,0,0,0.2)]">
                       <div className="text-xl font-bold text-[#e6edf3]">
                         {s.localFiles.toLocaleString()}
                       </div>
                       <div className="text-slate-500 text-sm mt-1">Fichiers locaux</div>
                     </div>
-                    <div className="text-center bg-[#0d1117]/70 rounded-xl py-3 shadow-[inset_0_1px_6px_rgba(0,0,0,0.2)]">
+                    <div className="text-center bg-[#0C0705]/70 rounded-xl py-3 shadow-[inset_0_1px_6px_rgba(0,0,0,0.2)]">
                       <div className="text-xl font-bold text-emerald-400">
                         {s.inSyncFiles.toLocaleString()}
                       </div>
                       <div className="text-slate-500 text-sm mt-1">Synchronisés</div>
                     </div>
-                    <div className="text-center bg-[#0d1117]/70 rounded-xl py-3 col-span-2 sm:col-span-1 shadow-[inset_0_1px_6px_rgba(0,0,0,0.2)]">
+                    <div className="text-center bg-[#0C0705]/70 rounded-xl py-3 col-span-2 sm:col-span-1 shadow-[inset_0_1px_6px_rgba(0,0,0,0.2)]">
                       <div className="text-xl font-bold text-[#C79A1B]">
                         {formatBytes(s.localBytes)}
                       </div>
@@ -260,7 +260,7 @@ export function FolderList({ folders, loading }: Props) {
                   {/* Full path */}
                   <div className="mt-4">
                     <p className="text-sm font-medium text-slate-500 mb-1.5">Chemin complet</p>
-                    <p className="font-mono text-sm text-slate-300 bg-[#0d1117]/70 rounded-xl px-3 py-2 break-all shadow-[inset_0_1px_6px_rgba(0,0,0,0.2)]">
+                    <p className="font-mono text-sm text-slate-300 bg-[#0C0705]/70 rounded-xl px-3 py-2 break-all shadow-[inset_0_1px_6px_rgba(0,0,0,0.2)]">
                       {folder.path}
                     </p>
                   </div>
@@ -268,7 +268,7 @@ export function FolderList({ folders, loading }: Props) {
                   {/* Folder ID */}
                   <div className="mt-2">
                     <p className="text-sm font-medium text-slate-500 mb-1">Identifiant Syncthing</p>
-                    <p className="font-mono text-sm text-slate-400 bg-[#0d1117]/70 rounded-xl px-3 py-2 break-all shadow-[inset_0_1px_6px_rgba(0,0,0,0.2)]">
+                    <p className="font-mono text-sm text-slate-400 bg-[#0C0705]/70 rounded-xl px-3 py-2 break-all shadow-[inset_0_1px_6px_rgba(0,0,0,0.2)]">
                       {folder.id}
                     </p>
                   </div>

@@ -45,8 +45,8 @@ export function MetricCard({ icon: Icon, label, value, sub, accent = DEFAULT, lo
   return (
     <div className={[
       'relative flex flex-col gap-3 rounded-2xl p-5 min-w-0',
-      'bg-gradient-to-br from-[#131c28] to-[#0f1520]',
-      'shadow-[0_4px_24px_rgba(0,0,0,0.4)]',
+      'bg-gradient-to-br from-[#160C07] to-[#0E0805]',
+      'shadow-[0_4px_24px_rgba(0,0,0,0.5)]',
       s.glow,
     ].join(' ')}>
 
@@ -56,7 +56,7 @@ export function MetricCard({ icon: Icon, label, value, sub, accent = DEFAULT, lo
       {loading ? <SkeletonContent /> : (
         <>
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-widest truncate">{label}</span>
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest truncate">{label}</span>
             <div className={`rounded-lg p-1.5 ${s.bg}`}>
               <Icon size={14} className={s.text} />
             </div>
@@ -67,7 +67,7 @@ export function MetricCard({ icon: Icon, label, value, sub, accent = DEFAULT, lo
             {trend && <span className={`text-sm font-medium mb-1 shrink-0 ${trendColor}`}>{trend}</span>}
           </div>
 
-          {sub && <p className="text-xs text-slate-600">{sub}</p>}
+          {sub && <p className="text-xs text-slate-500">{sub}</p>}
         </>
       )}
     </div>

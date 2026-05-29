@@ -135,7 +135,7 @@ export function EventFeed() {
         .feed-scroll::-webkit-scrollbar-thumb:hover { background: #484f58; }
       `}</style>
 
-      <div className="bg-gradient-to-br from-[#1a2030] to-[#161b22] rounded-xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.35)]">
+      <div className="bg-gradient-to-br from-[#1C1208] to-[#150F0A] rounded-xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.35)]">
 
         {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4">
@@ -189,7 +189,7 @@ export function EventFeed() {
             return (
               <div
                 key={evt.id}
-                className="event-item relative flex items-center gap-3 px-5 py-3 hover:bg-[#0d1117]/40 transition-colors"
+                className="event-item relative flex items-center gap-3 px-5 py-3 hover:bg-[#0C0705]/40 transition-colors"
               >
                 {/* Left accent strip */}
                 <span className={`absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full ${cfg.accentBg} ${cfg.accentGlow}`} />

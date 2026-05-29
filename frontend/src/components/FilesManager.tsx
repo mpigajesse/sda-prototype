@@ -83,7 +83,7 @@ function UnlockModal({ filename, ownerNode, onClose }: UnlockModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
-      <div className="w-full max-w-md bg-gradient-to-br from-[#1a2030] to-[#161b22] rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] p-6">
+      <div className="w-full max-w-md bg-gradient-to-br from-[#1C1208] to-[#150F0A] rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] p-6">
         <div className="flex items-start justify-between mb-5">
           <div>
             <h2 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
@@ -109,7 +109,7 @@ function UnlockModal({ filename, ownerNode, onClose }: UnlockModalProps) {
             value={key}
             onChange={(e) => setKey(e.target.value)}
             placeholder="Collez la clé ici…"
-            className="w-full bg-[#0d1117] rounded-xl px-3 py-2.5 pr-10 text-xs font-mono text-slate-300 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-[#C79A1B]/50 transition-all shadow-[inset_0_1px_6px_rgba(0,0,0,0.3)]"
+            className="w-full bg-[#0C0705] rounded-xl px-3 py-2.5 pr-10 text-xs font-mono text-slate-300 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-[#C79A1B]/50 transition-all shadow-[inset_0_1px_6px_rgba(0,0,0,0.3)]"
           />
           <button
             type="button"
@@ -130,7 +130,7 @@ function UnlockModal({ filename, ownerNode, onClose }: UnlockModalProps) {
         <div className="flex gap-3 mt-5">
           <button
             onClick={onClose}
-            className="flex-1 py-2 rounded-xl bg-[#0d1117]/60 text-xs text-slate-400 hover:text-slate-200 hover:bg-[#21262d] transition-colors"
+            className="flex-1 py-2 rounded-xl bg-[#0C0705]/60 text-xs text-slate-400 hover:text-slate-200 hover:bg-[#21262d] transition-colors"
           >
             Annuler
           </button>
@@ -168,7 +168,7 @@ function MyKeyPanel({ info }: MyKeyPanelProps) {
       <div className="flex items-center gap-2 mb-3">
         <Key size={14} className="text-emerald-400 shrink-0" />
         <span className="text-xs font-semibold text-emerald-400">Ma clé de coffre-fort</span>
-        <span className="ml-auto font-mono text-[10px] bg-[#0d1117]/60 px-2 py-0.5 rounded-full text-slate-500">
+        <span className="ml-auto font-mono text-[10px] bg-[#0C0705]/60 px-2 py-0.5 rounded-full text-slate-500">
           {info.node_name}
         </span>
       </div>
@@ -176,7 +176,7 @@ function MyKeyPanel({ info }: MyKeyPanelProps) {
         Partagez cette clé avec un pair pour qu'il puisse déchiffrer vos fichiers depuis son nœud.
       </p>
       <div className="flex items-center gap-2">
-        <div className="flex-1 bg-[#0d1117]/70 rounded-xl px-3 py-2 font-mono text-[11px] text-slate-400 overflow-hidden shadow-[inset_0_1px_6px_rgba(0,0,0,0.3)]">
+        <div className="flex-1 bg-[#0C0705]/70 rounded-xl px-3 py-2 font-mono text-[11px] text-slate-400 overflow-hidden shadow-[inset_0_1px_6px_rgba(0,0,0,0.3)]">
           {revealed ? info.vault_key : '••••••••••••••••••••••••••••••••••••••••••••'}
         </div>
         <button
@@ -310,7 +310,7 @@ export function FilesManager() {
           'relative rounded-xl px-6 py-10 text-center cursor-pointer transition-all',
           dragOver
             ? 'bg-[#C79A1B]/10 shadow-[0_0_0_2px_rgba(199,154,27,0.5),inset_0_0_40px_rgba(199,154,27,0.05)]'
-            : 'bg-gradient-to-br from-[#1a2030] to-[#161b22] shadow-[0_4px_24px_rgba(0,0,0,0.35)] hover:shadow-[0_4px_32px_rgba(0,0,0,0.45)]',
+            : 'bg-gradient-to-br from-[#1C1208] to-[#150F0A] shadow-[0_4px_24px_rgba(0,0,0,0.35)] hover:shadow-[0_4px_32px_rgba(0,0,0,0.45)]',
           '[background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0.02)_0px,rgba(255,255,255,0.02)_1px,transparent_1px,transparent_8px)]',
         ].join(' ')}
       >
@@ -328,7 +328,7 @@ export function FilesManager() {
           </div>
         ) : (
           <div className="flex flex-col items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-[#0d1117]/60 flex items-center justify-center shadow-[0_4px_16px_rgba(0,0,0,0.4)]">
+            <div className="w-12 h-12 rounded-2xl bg-[#0C0705]/60 flex items-center justify-center shadow-[0_4px_16px_rgba(0,0,0,0.4)]">
               <Upload size={22} className="text-slate-400" />
             </div>
             <div>
@@ -385,7 +385,7 @@ export function FilesManager() {
                 Aucun fichier uploadé depuis ce nœud.
               </p>
             ) : (
-              <div className="rounded-xl overflow-hidden bg-gradient-to-br from-[#1a2030] to-[#161b22] shadow-[0_4px_24px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(52,211,153,0.06)]">
+              <div className="rounded-xl overflow-hidden bg-gradient-to-br from-[#1C1208] to-[#150F0A] shadow-[0_4px_24px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(52,211,153,0.06)]">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-emerald-500/5 text-left">
@@ -462,7 +462,7 @@ export function FilesManager() {
                 </span>
               </div>
 
-              <div className="rounded-xl overflow-hidden bg-gradient-to-br from-[#1e1a14] to-[#161b22] shadow-[0_4px_24px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(251,191,36,0.06)]">
+              <div className="rounded-xl overflow-hidden bg-gradient-to-br from-[#1A1008] to-[#150F0A] shadow-[0_4px_24px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(251,191,36,0.06)]">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-amber-500/5 text-left">
