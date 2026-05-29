@@ -87,15 +87,15 @@ interface SvgNodeProps {
 }
 
 function SvgNode({ cx, cy, label, os, sub, ip, synId, connected, isLocal }: SvgNodeProps) {
-  const ringColor  = isLocal ? '#B3121B' : '#10b981'
-  const dotFilter  = isLocal ? 'url(#glow-r)' : 'url(#glow-g)'
+  // Tous les nœuds sont égaux — même couleur verte pour tout nœud connecté
+  const ringColor  = '#10b981'
   const nodeStroke = connected ? ringColor : '#1e2a38'
   const statusTxt  = connected ? '● Actif' : '○ Hors ligne'
   const statusFill = connected ? '#10b981' : '#475569'
 
   return (
     <g transform={`translate(${cx},${cy})`}>
-      {/* Pulse rings */}
+      {/* Pulse rings — identiques pour tous les nœuds */}
       {connected && (
         <>
           <circle r="36" fill="none" stroke={ringColor} strokeWidth="1">
@@ -109,20 +109,28 @@ function SvgNode({ cx, cy, label, os, sub, ip, synId, connected, isLocal }: SvgN
         </>
       )}
 
-      {/* Node circle */}
-      <circle r="30" fill={isLocal ? 'rgba(179,18,27,0.07)' : 'rgba(8,16,28,0.7)'} stroke={nodeStroke} strokeWidth="1.5"
-        filter={connected ? dotFilter : ''} />
+      {/* Node circle — même style pour tous */}
+      <circle r="30" fill="rgba(8,16,28,0.7)" stroke={nodeStroke} strokeWidth="1.5"
+        filter={connected ? 'url(#glow-g)' : ''} />
 
-      {/* Inner icon */}
-      {isLocal
-        ? <path d="M0,-12 L-8,-6 L-8,3 C-8,9 0,14 0,14 C0,14 8,9 8,3 L8,-6 Z" fill="#B3121B" opacity="0.9" />
-        : <circle r="6" fill={connected ? '#10b981' : '#1e2a38'} opacity={connected ? 0.8 : 0.4} />
-      }
+      {/* Inner dot — identique pour tous */}
+      <circle r="6" fill={connected ? '#10b981' : '#1e2a38'} opacity={connected ? 0.8 : 0.4} />
 
       {/* Status dot top-right */}
       <circle cx="22" cy="-22" r="5" fill={connected ? '#10b981' : '#374151'} filter={connected ? 'url(#glow-g)' : ''}>
         {connected && <animate attributeName="opacity" values="1;0.3;1" dur="2.5s" repeatCount="indefinite" />}
       </circle>
+
+      {/* Badge "Vue locale" en doré pour le nœud courant (neutre, pas de hiérarchie) */}
+      {isLocal && (
+        <>
+          <rect x="-28" y="-92" width="56" height="14" rx="7"
+            fill="rgba(199,154,27,0.12)" stroke="#C79A1B" strokeWidth="0.5" strokeOpacity="0.5" />
+          <text y="-82" textAnchor="middle" fill="#C79A1B" fontSize="7" fontWeight="600" letterSpacing="0.5">
+            ◎ Vue locale
+          </text>
+        </>
+      )}
 
       {/* Text ABOVE */}
       <text y="-46" textAnchor="middle" fill="#e6edf3"   fontSize="11" fontWeight="700">{label}</text>
@@ -211,9 +219,9 @@ export default function ClusterPage() {
           backgroundImage: 'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)',
           backgroundSize: '48px 48px',
         }} />
-        <div className="absolute -top-20 -left-20 w-96 h-96 rounded-full bg-[#B3121B]/5 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-20 -right-20 w-96 h-96 rounded-full bg-[#C79A1B]/4 blur-3xl pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 rounded-full bg-emerald-900/8 blur-3xl pointer-events-none" />
+        <div className="absolute -top-20 -left-20 w-96 h-96 rounded-full bg-emerald-900/5 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-20 -right-20 w-96 h-96 rounded-full bg-[#C79A1B]/3 blur-3xl pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 rounded-full bg-emerald-900/6 blur-3xl pointer-events-none" />
 
         <svg
           viewBox={`0 0 ${VBW} ${VBH}`}
