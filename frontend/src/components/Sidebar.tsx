@@ -175,6 +175,90 @@ export function Sidebar({ sdaStatus, version, folderCount, peerCount, connectedP
         </div>
       )}
 
+      {/* ── Artefacts de Souveraineté ─────────────────────── */}
+      {!collapsed && (
+        <div className="mx-3 mb-3">
+          <div className="rounded-xl overflow-hidden bg-gradient-to-b from-[#1C1208]/60 to-[#150F0A]/40 border border-[#3D2A1E]/50 px-3 py-3">
+
+            {/* Titre de section */}
+            <p className="text-[8px] font-bold text-[#C79A1B]/45 uppercase tracking-[0.22em] text-center mb-3">
+              Souveraineté
+            </p>
+
+            {/* Trois symboles */}
+            <div className="flex items-center justify-around">
+
+              {/* ① Étoile du Maroc — drapeau (5 branches) */}
+              <div className="flex flex-col items-center gap-1.5" title="Étoile du Maroc">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  {/* Étoile à 5 branches, proportions drapeau marocain */}
+                  <polygon
+                    points="12,3 14.06,9.17 20.56,9.22 15.33,13.08 17.29,19.28 12,15.5 6.71,19.28 8.67,13.08 3.44,9.22 9.94,9.17"
+                    stroke="#5C9B5E" strokeWidth="1.2" fill="none"
+                  />
+                </svg>
+                <span className="text-[7.5px] font-medium text-slate-600">Maroc</span>
+              </div>
+
+              <div className="w-px h-10 bg-[#3D2A1E]/70" />
+
+              {/* ② Adinkra Gye Nyame — souveraineté suprême */}
+              <div className="flex flex-col items-center gap-1.5" title="Gye Nyame — Adinkra (Afrique)">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  {/* Lobe supérieur */}
+                  <path
+                    d="M12,2 C9,2 7,4 7,7.5 C7,9.5 8.5,11 12,11.5"
+                    stroke="#C79A1B" strokeWidth="1.1" fill="none"
+                  />
+                  <path
+                    d="M12,2 C15,2 17,4 17,7.5 C17,9.5 15.5,11 12,11.5"
+                    stroke="#C79A1B" strokeWidth="1.1" fill="none"
+                  />
+                  {/* Lobe inférieur */}
+                  <path
+                    d="M12,12.5 C8.5,13 7,14.5 7,16.5 C7,20 9,22 12,22"
+                    stroke="#C79A1B" strokeWidth="1.1" fill="none"
+                  />
+                  <path
+                    d="M12,12.5 C15.5,13 17,14.5 17,16.5 C17,20 15,22 12,22"
+                    stroke="#C79A1B" strokeWidth="1.1" fill="none"
+                  />
+                  {/* Ailes horizontales */}
+                  <path d="M2,12 L7,12" stroke="#C79A1B" strokeWidth="0.9" opacity="0.55" />
+                  <path d="M17,12 L22,12" stroke="#C79A1B" strokeWidth="0.9" opacity="0.55" />
+                  {/* Œil central */}
+                  <ellipse cx="12" cy="12" rx="2.2" ry="1.5" fill="none" stroke="#C79A1B" strokeWidth="0.8" />
+                  <circle cx="12" cy="12" r="0.8" fill="#C79A1B" opacity="0.6" />
+                </svg>
+                <span className="text-[7.5px] font-medium text-slate-600">Afrika</span>
+              </div>
+
+              <div className="w-px h-10 bg-[#3D2A1E]/70" />
+
+              {/* ③ Tricolore panafricain — rouge / noir / vert */}
+              <div className="flex flex-col items-center gap-1.5" title="Drapeau panafricain">
+                <div className="w-5 h-[22px] rounded-[3px] overflow-hidden flex flex-col border border-[#3D2A1E]/60 shadow-[0_0_6px_rgba(0,0,0,0.4)]">
+                  <div className="flex-1 bg-[#CE1126]" />
+                  <div className="flex-1 bg-[#1A1A1A]" />
+                  <div className="flex-1 bg-[#009460]" />
+                </div>
+                <span className="text-[7.5px] font-medium text-slate-600">Panafr.</span>
+              </div>
+            </div>
+
+            {/* Tagline en arabe — السيادة الرقمية */}
+            <p
+              className="text-center text-[9.5px] font-semibold mt-3 tracking-wider"
+              style={{ color: 'rgba(199,154,27,0.42)', fontFamily: 'Georgia, serif' }}
+              dir="rtl"
+              title="السيادة الرقمية — Digital Sovereignty"
+            >
+              السيادة الرقمية
+            </p>
+          </div>
+        </div>
+      )}
+
       {!collapsed && (
         <div className="px-4 pt-2 pb-1">
           <span className="text-[10px] font-semibold text-[#C79A1B]/35 uppercase tracking-widest">Navigation</span>
