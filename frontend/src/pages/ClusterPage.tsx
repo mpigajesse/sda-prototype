@@ -267,24 +267,33 @@ export default function ClusterPage() {
                   strokeOpacity={active ? 0.45 : 0.2}
                   strokeDasharray="10 7" />
 
-                {/* Moving data packets */}
+                {/* Moving data packets — bidirectionnels (P2P symétrique) */}
                 {active && (
                   <>
-                    {/* Green packet */}
+                    {/* → Sens aller */}
                     <circle r="4.5" fill="#10b981" filter="url(#glow-g)">
-                      <animateMotion dur={`${a.d1}s`} repeatCount="indefinite">
+                      <animateMotion dur={`${a.d1}s`} repeatCount="indefinite"
+                        keyPoints="0;1" keyTimes="0;1" calcMode="linear">
                         <mpath href={`#mp-${key}`} />
                       </animateMotion>
                     </circle>
-                    {/* Gold packet */}
                     <circle r="3" fill="#C79A1B" filter="url(#glow-gold)" opacity="0.9">
-                      <animateMotion dur={`${a.d2}s`} begin={`${a.b2}s`} repeatCount="indefinite">
+                      <animateMotion dur={`${a.d2}s`} begin={`${a.b2}s`} repeatCount="indefinite"
+                        keyPoints="0;1" keyTimes="0;1" calcMode="linear">
                         <mpath href={`#mp-${key}`} />
                       </animateMotion>
                     </circle>
-                    {/* Red packet (less frequent) */}
-                    <circle r="2.5" fill="#B3121B" filter="url(#glow-r)" opacity="0.7">
-                      <animateMotion dur={`${a.d1 * 1.8}s`} begin={`${a.d1 * 0.5}s`} repeatCount="indefinite">
+
+                    {/* ← Sens retour (bidirectionnel) */}
+                    <circle r="4.5" fill="#10b981" filter="url(#glow-g)" opacity="0.85">
+                      <animateMotion dur={`${a.d1 * 1.1}s`} begin={`${a.d1 * 0.55}s`} repeatCount="indefinite"
+                        keyPoints="1;0" keyTimes="0;1" calcMode="linear">
+                        <mpath href={`#mp-${key}`} />
+                      </animateMotion>
+                    </circle>
+                    <circle r="3" fill="#C79A1B" filter="url(#glow-gold)" opacity="0.8">
+                      <animateMotion dur={`${a.d2 * 1.1}s`} begin={`${a.d2 * 0.6}s`} repeatCount="indefinite"
+                        keyPoints="1;0" keyTimes="0;1" calcMode="linear">
                         <mpath href={`#mp-${key}`} />
                       </animateMotion>
                     </circle>
