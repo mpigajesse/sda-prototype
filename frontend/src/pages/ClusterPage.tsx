@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { Shield, Lock, Wifi, Database, Server, GitBranch, Cpu, MemoryStick, Clock, Radio, RefreshCw } from 'lucide-react'
 import { useSDA } from '../contexts/SDAContext'
 
@@ -56,9 +56,15 @@ const ANIM: Record<string, { d1: number; d2: number; b2: number }> = {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-interface MiniCardProps { icon: React.ElementType; label: string; value: string; color: string }
+interface MiniCardProps {
+  icon: React.ElementType
+  label: string
+  value: string
+  color: string
+  valueRef?: React.Ref<HTMLParagraphElement>
+}
 
-function MiniCard({ icon: Icon, label, value, color }: MiniCardProps) {
+function MiniCard({ icon: Icon, label, value, color, valueRef }: MiniCardProps) {
   return (
     <div className="flex items-center gap-3 px-4 py-4 rounded-2xl bg-gradient-to-br from-[#111820] to-[#0d1420] shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
       <div className="rounded-xl p-2 shrink-0" style={{ backgroundColor: `${color}1a` }}>
@@ -66,7 +72,7 @@ function MiniCard({ icon: Icon, label, value, color }: MiniCardProps) {
       </div>
       <div className="min-w-0">
         <p className="text-[10px] font-semibold text-slate-600 uppercase tracking-widest">{label}</p>
-        <p className="text-xl font-bold" style={{ color }}>{value}</p>
+        <p ref={valueRef} className="text-xl font-bold" style={{ color }}>{value}</p>
       </div>
     </div>
   )
@@ -170,11 +176,19 @@ export default function ClusterPage() {
   const c01 = isConn(peer0?.deviceID)
   const c02 = isConn(peer1?.deviceID)
 
-  // Cosmetic packet counter — increments while cluster is live
-  const [pktCount, setPktCount] = useState(1247)
+  // Compteur cosmétique — useRef pour éviter tout re-render (les <animateMotion> ne se réinitialisent plus)
+  const pktCountRef = useRef(1247)
+  const svgPktRef   = useRef<SVGTextElement>(null)
+  const cardPktRef  = useRef<HTMLParagraphElement>(null)
+
   useEffect(() => {
     if (!isOp) return
-    const t = setInterval(() => setPktCount((v) => v + Math.floor(Math.random() * 4) + 1), 1800)
+    const t = setInterval(() => {
+      pktCountRef.current += Math.floor(Math.random() * 4) + 1
+      const text = pktCountRef.current.toLocaleString()
+      if (svgPktRef.current)  svgPktRef.current.textContent  = text
+      if (cardPktRef.current) cardPktRef.current.textContent = text
+    }, 1800)
     return () => clearInterval(t)
   }, [isOp])
 
@@ -329,8 +343,8 @@ export default function ClusterPage() {
               fill={connectedPeers > 0 ? '#10b981' : '#64748b'}>
               ◆ {connectedPeers + 1} / {totalPeers + 1} nœuds actifs
             </text>
-            <text x="500" y="300" textAnchor="middle" fill="#475569" fontSize="8" fontFamily="monospace">
-              {pktCount.toLocaleString()} paquets synchronisés
+            <text ref={svgPktRef} x="500" y="300" textAnchor="middle" fill="#475569" fontSize="8" fontFamily="monospace">
+              {pktCountRef.current.toLocaleString()} paquets synchronisés
             </text>
           </g>
 
@@ -381,7 +395,7 @@ export default function ClusterPage() {
           <MiniCard icon={Cpu}         label="CPU nœud local"    value={`${system.cpuPercent.toFixed(1)}%`} color="#B3121B" />
           <MiniCard icon={MemoryStick} label="Mémoire utilisée"  value={formatMem(system.alloc)}             color="#C79A1B" />
           <MiniCard icon={Clock}       label="Uptime"            value={formatUptime(system.uptime)}         color="#10b981" />
-          <MiniCard icon={Radio}       label="Paquets sync"      value={pktCount.toLocaleString()}           color="#6366f1" />
+          <MiniCard icon={Radio}       label="Paquets sync"      value={pktCountRef.current.toLocaleString()} color="#6366f1" valueRef={cardPktRef} />
         </div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
