@@ -161,6 +161,61 @@ textarea {
   }
 }
 
+/* ── Animations SDA Sovereign ─────────────────────────────── */
+
+/* Ligne de scan sécurité — traversée verticale lente */
+@keyframes sda-scan {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  4%   { opacity: 0.75; }
+  96%  { opacity: 0.75; }
+  100% { transform: translateY(4000%); opacity: 0; }
+}
+
+/* Révélation valeur — fade + slide up */
+@keyframes sda-value-reveal {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Entrée de page — fade + slide up */
+@keyframes sda-page-enter {
+  from { opacity: 0; transform: translateY(11px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Respiration symboles de souveraineté */
+@keyframes sda-sovereign-breathe {
+  0%, 100% { opacity: 0.5;  filter: drop-shadow(0 0 3px rgba(199,154,27,0.12)); }
+  50%       { opacity: 0.95; filter: drop-shadow(0 0 10px rgba(199,154,27,0.55)); }
+}
+
+/* Entrée en liste décalée */
+@keyframes sda-slide-in-left {
+  from { opacity: 0; transform: translateX(-14px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Pulse connexion établie */
+@keyframes sda-connected-ring {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(52,211,153,0);  }
+  45%       { box-shadow: 0 0 0 4px rgba(52,211,153,0.18); }
+}
+
+/* Clignotement accentué badge LIVE */
+@keyframes sda-live-flash {
+  0%, 90%, 100% { opacity: 1; }
+  45%            { opacity: 0.4; }
+}
+
+/* Classes utilitaires */
+.sda-scan-line                { animation: sda-scan 9s ease-in-out 2.5s infinite; }
+.sda-value-reveal             { animation: sda-value-reveal 0.45s ease forwards; }
+.sda-page-enter               { animation: sda-page-enter 0.38s ease forwards; }
+.sda-sovereign-breathe        { animation: sda-sovereign-breathe 3.2s ease-in-out infinite; }
+.sda-sovereign-breathe-delay  { animation: sda-sovereign-breathe 3.2s ease-in-out 1.6s infinite; }
+.sda-connected-ring           { animation: sda-connected-ring 2.4s ease-in-out infinite; }
+.sda-live-flash               { animation: sda-live-flash 2s ease-in-out infinite; }
+
 /* ============================================================
    UTILITAIRES
    ============================================================ */

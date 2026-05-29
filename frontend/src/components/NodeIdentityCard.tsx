@@ -86,6 +86,14 @@ export function NodeIdentityCard({
         <rect width="100%" height="100%" fill="url(#zellige-nic)" />
       </svg>
 
+      {/* Ligne de scan sécurité — vérification système symbolique */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
+        <div
+          className="sda-scan-line absolute inset-x-0 h-[1px]"
+          style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(52,211,153,0.55) 40%, rgba(199,154,27,0.4) 60%, transparent 100%)' }}
+        />
+      </div>
+
       <div className="relative p-6 lg:p-8">
 
         {/* Top row: badge + status */}
@@ -101,7 +109,7 @@ export function NodeIdentityCard({
           </div>
 
           {/* Live badge */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 sda-connected-ring">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />

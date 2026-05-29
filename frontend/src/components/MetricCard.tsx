@@ -54,7 +54,7 @@ export function MetricCard({ icon: Icon, label, value, sub, accent = DEFAULT, lo
       <span className={`absolute inset-x-6 top-0 h-px bg-gradient-to-r ${s.strip}`} />
 
       {loading ? <SkeletonContent /> : (
-        <>
+        <div key="loaded" className="sda-value-reveal flex flex-col gap-3">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest truncate">{label}</span>
             <div className={`rounded-lg p-1.5 ${s.bg}`}>
@@ -68,7 +68,7 @@ export function MetricCard({ icon: Icon, label, value, sub, accent = DEFAULT, lo
           </div>
 
           {sub && <p className="text-xs text-slate-500">{sub}</p>}
-        </>
+        </div>
       )}
     </div>
   )

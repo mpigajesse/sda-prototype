@@ -143,7 +143,7 @@ export function EventFeed() {
           <span className="text-sm font-semibold text-slate-300 uppercase tracking-widest">
             Activité récente
           </span>
-          <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded font-bold animate-pulse ml-1">
+          <span className="sda-live-flash bg-[#B3121B] text-white text-[10px] px-2 py-0.5 rounded-md font-bold tracking-wider ml-1 shadow-[0_0_8px_rgba(179,18,27,0.5)]">
             LIVE
           </span>
           {totalCount.current > 0 && (

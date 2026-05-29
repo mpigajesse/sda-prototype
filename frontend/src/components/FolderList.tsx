@@ -19,6 +19,13 @@ function SyncProgressBar({ inSyncFiles, localFiles, hasError }: {
   const pct = Math.round((inSyncFiles / Math.max(localFiles, 1)) * 100)
   const clampedPct = Math.min(100, Math.max(0, pct))
 
+  // Animate fill from 0 → target on mount/update
+  const [displayPct, setDisplayPct] = useState(0)
+  useEffect(() => {
+    const t = window.setTimeout(() => setDisplayPct(clampedPct), 80)
+    return () => window.clearTimeout(t)
+  }, [clampedPct])
+
   let barColor = 'bg-[#C79A1B]'
   if (hasError) barColor = 'bg-red-500'
   else if (clampedPct === 100) barColor = 'bg-emerald-500'
@@ -27,14 +34,14 @@ function SyncProgressBar({ inSyncFiles, localFiles, hasError }: {
     <div className="mt-4">
       <div className="flex justify-between items-center mb-1.5">
         <span className="text-sm text-slate-400">Progression sync</span>
-        <span className={`text-sm font-semibold ${hasError ? 'text-red-400' : clampedPct === 100 ? 'text-emerald-400' : 'text-[#C79A1B]'}`}>
+        <span className={`text-sm font-semibold tabular-nums ${hasError ? 'text-red-400' : clampedPct === 100 ? 'text-emerald-400' : 'text-[#C79A1B]'}`}>
           {clampedPct}%
         </span>
       </div>
-      <div className="w-full h-1.5 bg-[#0d1117] rounded-full overflow-hidden">
+      <div className="w-full h-1.5 bg-[#0C0705] rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-700 ${barColor}`}
-          style={{ width: `${clampedPct}%` }}
+          style={{ width: `${displayPct}%` }}
         />
       </div>
     </div>

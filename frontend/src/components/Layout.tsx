@@ -57,7 +57,7 @@ export function Layout() {
         )}
 
         <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
-          <div className="w-full">
+          <div key={location.pathname} className="w-full sda-page-enter">
             <Outlet />
             <footer className="mt-10 pt-4 text-center text-[11px] text-slate-700 pb-4 space-y-1">
               <p>SDA v1.0 · EIGSI 2025–2026 · Jesse MPIGA-ODOUMBA</p>

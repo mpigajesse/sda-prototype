@@ -189,7 +189,7 @@ export function Sidebar({ sdaStatus, version, folderCount, peerCount, connectedP
             <div className="flex items-center justify-around">
 
               {/* ① Étoile du Maroc — drapeau (5 branches) */}
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-label="Étoile du Maroc">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-label="Étoile du Maroc" className="sda-sovereign-breathe">
                 <polygon
                   points="12,3 14.06,9.17 20.56,9.22 15.33,13.08 17.29,19.28 12,15.5 6.71,19.28 8.67,13.08 3.44,9.22 9.94,9.17"
                   stroke="#5C9B5E" strokeWidth="1.2" fill="none"
@@ -199,7 +199,7 @@ export function Sidebar({ sdaStatus, version, folderCount, peerCount, connectedP
               <div className="w-px h-10 bg-[#3D2A1E]/70" />
 
               {/* ② Adinkra Gye Nyame — souveraineté suprême */}
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-label="Gye Nyame — Adinkra">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-label="Gye Nyame — Adinkra" className="sda-sovereign-breathe-delay">
                 <path d="M12,2 C9,2 7,4 7,7.5 C7,9.5 8.5,11 12,11.5" stroke="#C79A1B" strokeWidth="1.1" fill="none" />
                 <path d="M12,2 C15,2 17,4 17,7.5 C17,9.5 15.5,11 12,11.5" stroke="#C79A1B" strokeWidth="1.1" fill="none" />
                 <path d="M12,12.5 C8.5,13 7,14.5 7,16.5 C7,20 9,22 12,22" stroke="#C79A1B" strokeWidth="1.1" fill="none" />

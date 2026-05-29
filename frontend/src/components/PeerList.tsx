@@ -210,6 +210,7 @@ function PeerCard({ device, conn }: PeerCardProps) {
       className={[
         'group relative overflow-hidden rounded-xl bg-gradient-to-br from-[#1C1208] to-[#150F0A] transition-all shadow-[0_4px_24px_rgba(0,0,0,0.35)]',
         justConnected ? 'ring-2 ring-emerald-400/60 animate-pulse' : '',
+        isConnected && !justConnected ? 'sda-connected-ring' : '',
       ].join(' ')}
     >
       {/* Left accent strip */}
@@ -424,12 +425,16 @@ export function PeerList({ devices, connections, myID }: Props) {
 
   return (
     <div className="flex flex-col gap-3.5">
-      {peers.map((device) => (
-        <PeerCard
+      {peers.map((device, index) => (
+        <div
           key={device.deviceID}
-          device={device}
-          conn={connections?.connections[device.deviceID]}
-        />
+          style={{ animation: `sda-slide-in-left 0.35s ease ${index * 0.08}s both` }}
+        >
+          <PeerCard
+            device={device}
+            conn={connections?.connections[device.deviceID]}
+          />
+        </div>
       ))}
     </div>
   )
