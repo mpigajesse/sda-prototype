@@ -20,6 +20,8 @@ config/nginx/certs/*.key
 config/nginx/certs/*.crt
 config/nginx/certs/*.csr
 config/nginx/certs/*.srl
+# Clé API Syncthing — locale à chaque nœud, générée par setup-syncthing-key.sh
+config/nginx/certs/syncthing-key.conf
 
 # ---------------------------------------------------------------------------
 # Données runtime — volumes Docker
