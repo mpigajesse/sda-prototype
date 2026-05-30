@@ -5,8 +5,9 @@
 `MPIGA_Jesse_FE_Promo2026_Rapport_final.pdf`  
 `MPIGA_Jesse_FE_Promo2026_Annexes.pdf` (annexes dans fichier séparé)
 
-**Deadline dépôt :** 2 semaines avant soutenance — soit environ **23/07/2026**  
-**Validation préalable :** Mme CHOKRI doit signer la page de garde avant dépôt  
+**SOUTENANCE : 01/07/2026 à 10h00 — présentiel EIGSI Casablanca**  
+**Deadline dépôt Moodle :** **17/06/2026** (2 semaines avant soutenance)  
+**Remettre à Mme CHOKRI pour validation : 10/06/2026** (elle signe la page de garde)  
 **Volume :** 25–30 pages (hors remerciements, sommaire, annexes)  
 **Taille max PDF :** 8 Mo
 
