@@ -291,6 +291,25 @@ La réplication P2P bidirectionnelle Win11 ↔ Ubuntu ↔ Kali est **validée à
 
 ## 7. Anomalies documentées (non bloquantes)
 
+### 7.0 — Swagger UI inaccessible : `/openapi.json` non proxifié *(corrigé le 2026-06-01)*
+
+**Observation :** `https://localhost/docs` affichait "Unable to render this definition — The provided definition does not specify a valid version field."  
+**Cause :** FastAPI's Swagger UI charge son schéma depuis `/openapi.json`. Ce chemin n'était pas déclaré dans nginx et tombait dans `location /` → React frontend → réponse HTML → Swagger interprétait du HTML comme un schéma OpenAPI invalide.  
+**Correction apportée dans `config/nginx/nginx.conf.template` :**
+```nginx
+location /openapi.json {
+    proxy_pass http://sda-backend:8000/openapi.json;
+}
+location /sda-api/ {
+    proxy_pass http://sda-backend:8000/;
+}
+```
+**Validation post-fix :** `openapi: 3.1.0` retourné correctement — Swagger UI opérationnel sur les 3 nœuds.  
+**Impact résolu :** Scénario 2 du guide démo (injection via Swagger) entièrement fonctionnel.  
+**Commit :** `5902003`
+
+---
+
 ### 7.1 — Adresse active Syncthing affiche 172.21.0.x sur Win11
 
 **Observation :** Dans la GUI Syncthing de Win11, les pairs distants affichent `172.21.0.1:xxxxx` au lieu de `192.168.200.x`.  
@@ -325,4 +344,18 @@ Le cluster SDA-Prototype v0.1 est **entièrement validé** sur les 3 nœuds. **3
 
 ---
 
-*Rapport de validation — SDA-Prototype v0.1 — EIGSI × AL BARAA CONSULTING — 2026-05-27*
+---
+
+## 9. Correctifs post-validation (2026-06-01)
+
+| Date | Correctif | Commit | Impact |
+|------|-----------|--------|--------|
+| 2026-06-01 | nginx : `/openapi.json` + `/sda-api/` proxifiés vers le backend | `5902003` | Swagger UI opérationnel sur les 3 nœuds |
+| 2026-05-30 | Injection automatique clé API Syncthing via `nginx-entrypoint.sh` | `2902916` | Suppression action manuelle `setup-syncthing-key.sh` |
+| 2026-05-30 | `syncthing-key.conf` exclu du tracking git + include nginx optionnel | `3d35cf2`/`0c3394b` | git pull ne casse plus les VMs |
+
+Ces correctifs n'affectent pas les scores de validation (32/33 PASS) — ils améliorent la robustesse opérationnelle et l'expérience développeur.
+
+---
+
+*Rapport de validation — SDA-Prototype v0.2 — EIGSI × AL BARAA CONSULTING — Mis à jour 2026-06-01*
