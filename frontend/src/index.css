@@ -43,13 +43,19 @@
 
 /* ============================================================
    RESET
+   Dans @layer base : hors couche, ce sélecteur * l'emportait sur
+   TOUTES les classes Tailwind v4 (rangées dans @layer utilities) —
+   les règles hors couche gagnent toujours. Résultat : p-*, m-*,
+   space-y-* etc. étaient tous ramenés à 0 dans l'application.
    ============================================================ */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 }
 
 body {
