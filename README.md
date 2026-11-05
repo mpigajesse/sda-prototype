@@ -4,6 +4,9 @@
 > MPIGA-ODOUMBA Jesse · Promotion 2026
 > Tuteur entreprise : CHOKRI Soumia · Tuteur EIGSI : M. Ayoub Amrani
 
+**Démo en ligne : [sda-prototype.eu.cc](https://sda-prototype.eu.cc)**
+Cluster P2P simulé : les identifiants de démonstration sont affichés sur la page de connexion. La démo tourne sur une offre gratuite et met environ 50 secondes à se réveiller au premier accès.
+
 ---
 
 ## Contexte et Problématique
