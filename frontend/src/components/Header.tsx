@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Shield, RefreshCw, ExternalLink, Menu, X } from 'lucide-react'
+import { SYNCTHING_GUI_URL } from '../utils/syncthingGui'
 
 interface HeaderProps {
   sdaStatus: string
@@ -51,7 +52,7 @@ export default function Header({ sdaStatus, lastRefresh, isRefreshing, onRefresh
 
   const SyncthingLink = () => (
     <a
-      href="http://localhost:8384"
+      href={SYNCTHING_GUI_URL}
       target="_blank"
       rel="noopener noreferrer"
       className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors"

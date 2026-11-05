@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { FolderSync, HardDrive, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react'
 import { fetchFolderStatus, type SyncthingFolder, type FolderStatus } from '../api/syncthing'
 import { StatusBadge } from './StatusBadge'
+import { SYNCTHING_GUI_URL } from '../utils/syncthingGui'
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B'
@@ -93,7 +94,7 @@ function EmptyState() {
         Ajoutez un dossier partagé pour démarrer la synchronisation P2P.
       </p>
       <a
-        href="http://localhost:8384"
+        href={SYNCTHING_GUI_URL}
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex items-center gap-2 text-sm text-[#C79A1B] hover:text-[#D8AE35] transition-colors hover:bg-[#C79A1B]/10 rounded-xl px-4 py-2"

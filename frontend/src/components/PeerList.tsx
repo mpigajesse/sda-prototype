@@ -10,6 +10,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { type SyncthingDevice, type SyncthingConnections } from '../api/syncthing'
+import { SYNCTHING_GUI_URL } from '../utils/syncthingGui'
 
 interface Props {
   devices: SyncthingDevice[]
@@ -161,7 +162,7 @@ function EmptyState() {
         Ajoutez un pair via l&#39;interface Syncthing pour initier la replication P2P chiffree.
       </p>
       <a
-        href="http://localhost:8384"
+        href={SYNCTHING_GUI_URL}
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex items-center gap-1.5 mt-4 text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors"

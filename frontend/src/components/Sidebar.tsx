@@ -14,6 +14,7 @@ import {
   HardDrive,
   Globe,
 } from 'lucide-react'
+import { SYNCTHING_GUI_URL } from '../utils/syncthingGui'
 
 interface NavItem {
   to: string
@@ -275,7 +276,7 @@ export function Sidebar({ sdaStatus, version, folderCount, peerCount, connectedP
           </div>
         )}
         <a
-          href="http://localhost:8384"
+          href={SYNCTHING_GUI_URL}
           target="_blank"
           rel="noopener noreferrer"
           className={[
