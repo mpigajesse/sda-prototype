@@ -58,3 +58,10 @@ def node_info():
         "host_arch": platform.machine(),
         "host_hostname": platform.node(),
     }
+
+
+# Démo publique (portfolio) : branchée en dernier, car elle ajoute la route
+# attrape-tout qui sert le frontend. Sans DEMO_PASSWORD, ne fait rien.
+from .demo import installer as _installer_demo  # noqa: E402
+
+_installer_demo(app)
